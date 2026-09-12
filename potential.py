@@ -7,9 +7,10 @@ The potential array is initialized by some functions based on specifics of the p
 
 class Potential:
     def __init__(self, grid, potential_array):
+
         self.grid = grid
         self.V = np.asarray(potential_array, float)
-        
+        #V needs to be real, independent with time, and customized with classmethods
     
 
 

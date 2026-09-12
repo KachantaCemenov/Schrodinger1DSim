@@ -13,4 +13,4 @@ class Grid1D:
             num_points
         )
 
-        self.dx = self.x[1] - self.x[0]
+        self.dx = self.x[1] - self.x[0] # linspace makes uniform spacing, so dx is constant
