@@ -8,7 +8,7 @@ class WaveFunction:
         psi is an array containing the wave function values at the grid points
         """
 
-        #self,grid has x and dx
+        #self.grid has x and dx
         self.grid = grid
 
         self.psi = np.asarray(psi, complex);
