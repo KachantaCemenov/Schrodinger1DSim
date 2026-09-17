@@ -9,7 +9,7 @@ class Potential:
     def __init__(self, grid, potential_array):
 
         self.grid = grid
-        self.V = np.asarray(potential_array, float)
+        self.values = np.asarray(potential_array, float)
         #V needs to be real, independent with time, and customized with classmethods
     
 
