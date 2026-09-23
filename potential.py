@@ -15,7 +15,7 @@ class Potential:
 
 
     @classmethod
-    def free_particle(cls, grid):
+    def FreeParticle(cls, grid):
 
         #V(x) = 0
         
@@ -24,7 +24,7 @@ class Potential:
         return cls(grid, values)
 
     @classmethod
-    def harmonic_oscillator(cls, grid, mass=1.0, omega=1.0):
+    def HarmonicOscillator(cls, grid, mass=1.0, omega=1.0):
 
         #V(x) = 1/2 m omega^2 x^2
 
@@ -35,15 +35,15 @@ class Potential:
         return cls(grid, values)
 
     @classmethod
-    def barrier(cls, grid, height, x_left, x_right):
+    def Barrier(cls, grid, height, x_left, x_right):
 
         #Rectangular potential barrier with customizable height
 
         values = np.zeros_like(grid.x)
 
         wall = (
-            (grid.x >= x_left)
-            & (grid.x <= x_right)
+            (grid.x >= x_left) & 
+            (grid.x <= x_right)
         )
 
         values[wall] = height

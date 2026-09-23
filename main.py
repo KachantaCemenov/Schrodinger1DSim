@@ -16,20 +16,20 @@ grid = Grid1D(
 wave = WaveFunction.gaussian_packet(
     grid=grid,
     x0=-15,
-    sigma=1,
-    k0=10
+    sigma=5,
+    k0=9
 )
 
 #Initialize potential function
 
-#potential = Potential.free_particle(grid)
-#potential = Potential.harmonic_oscillator(grid, mass=1.0, omega=1.0)
+#potential = Potential.FreeParticle(grid)
+#potential = Potential.HarmonicOscillator(grid, mass=1.0, omega=1.0)
 
-potential = Potential.barrier(
+potential = Potential.Barrier(
     grid,
-    height=25,
+    height=30,
     x_left=10,
-    x_right=20
+    x_right=23
 )
 
 #Initialize Crank-Nicolson solver
@@ -44,59 +44,24 @@ solver = CrankNicolsonSolver(
 
 
 #Visualization
-print("Norm:", wave.norm())
-print("<x>:", wave.expectation_x())
-
-"""
-fig, ax1 = plt.subplots()
-ax2 = ax1.twinx()
-#Initial shape
-probability_line, = ax1.plot(
-    grid.x,
-    wave.probability_density(),
-    label="|ψ|²"
-)
-
-potential_line, = ax2.plot(
-    grid.x,
-    potential.values,
-    "--",
-    label="V(x)"
-)
-ax1.set_xlabel("x")
-ax1.set_ylabel("|ψ|²")
-ax2.set_ylabel("V(x)")
-
-plt.ion()
-
-# Advance 1000 time steps
-for i in range(10000):
-    solver.step(wave)
-
-    probability_line.set_ydata(wave.probability_density())
-    
-    ax1.set_title(f"Time step: {i :.3f}, Norm: {wave.norm():.3f}, <x>: {wave.expectation_x():.3f}")
-    print("Norm:", f"{wave.norm():.18f}")
-    print("<x>:", f"{wave.expectation_x():.18f}")
+print("Norm:", wave.Norm())
+print("<x>:", wave.Expectation_x())
 
 
-    plt.draw()
-    plt.pause(0.01)
 
-plt.ioff()
-plt.show()
-"""
+
+
 frames = []
 
 for i in range(50000):
-    solver.step(wave)
+    solver.Step(wave)
 
     # Only save every 20th timestep
     if i % 20 == 0:
         frames.append({
             "probability": wave.probability_density().copy(),
-            "norm": wave.norm(),
-            "expected_x": wave.expectation_x(),
+            "norm": wave.Norm(),
+            "expected_x": wave.Expectation_x(),
             "time": i * solver.dt,
             "step": i
         })

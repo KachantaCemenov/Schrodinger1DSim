@@ -12,10 +12,10 @@ class CrankNicolsonSolver:
         self.mass = mass
         self.hbar = hbar
 
-        self._build_matrices()
+        self._BuildMatrices()
 
 
-    def _build_matrices(self):
+    def _BuildMatrices(self):
 
         dx = self.grid.dx
         V = self.potential.values[1:-1]  # Exclude boundary points
@@ -41,7 +41,7 @@ class CrankNicolsonSolver:
 
         self.A_lu = splu(self.A)  # LU decomposition 
 
-    def step(self, wave):
+    def Step(self, wave):
 
         # A * psi(t+1) = B * psi(t)
 

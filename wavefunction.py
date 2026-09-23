@@ -16,27 +16,27 @@ class WaveFunction:
         #Include a check for sizes of these two arrays
 
     
-    def probability_density(self):
+    def ProbabilityDensity(self):
         # |psi(x)|^2 
         return np.abs(self.psi) ** 2
 
-    def norm(self):
+    def Norm(self):
         # |psi(x)|^2 dx  ; should approximate 1 for a normalized wave function
         # Consider using a np trapezoid for this
-        return np.sqrt(np.sum(self.probability_density() * (self.grid.dx)))
+        return np.sqrt(np.sum(self.ProbabilityDensity() * (self.grid.dx)))
 
-    def normalize(self):
+    def Normalize(self):
         # Normalize the wave function so that the integral of |psi(x)|^2 dx = 1
         # DO NOT CALL THIS AT EVERY TIME STEP
-        self.psi /= self.norm()
-    
-    def expectation_x(self):
+        self.psi /= self.Norm()
+
+    def Expectation_x(self):
         # <x> = integral of x * |psi(x)|^2 dx
         # Can't use norm method here cus x is array
-        return np.sum(self.grid.x * self.probability_density() * (self.grid.dx))
+        return np.sum(self.grid.x * self.ProbabilityDensity() * (self.grid.dx))
 
     @classmethod
-    def gaussian_packet(cls, grid, x0, sigma, k0):
+    def GaussianPacket(cls, grid, x0, sigma, k0):
 
         x = grid.x
 
@@ -54,6 +54,6 @@ class WaveFunction:
 
         wave = cls(grid, psi)
 
-        wave.normalize()
+        wave.Normalize()
 
         return wave
