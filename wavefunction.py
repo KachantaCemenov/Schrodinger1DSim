@@ -35,6 +35,46 @@ class WaveFunction:
         # Can't use norm method here cus x is array
         return np.sum(self.grid.x * self.ProbabilityDensity() * (self.grid.dx))
 
+
+    #Do Fourier transform
+    #https://www.geeksforgeeks.org/maths/fourier-transform/
+
+    def Momentum_WaveFunction(self):
+        #phi(k) = 1/sqrt(2pi) * integral of psi(x) * exp(-ikx) dx
+
+        dx = self.grid.dx
+        N = len(self.psi)
+
+        # Array of k corresponding to Fourier transform of array of x
+        k = 2 * np.pi * np.fft.fftfreq(N, d=dx)
+
+        # Fourier on psi(x) <- This is the Amplitude array, must match with k array above
+        phi_k = (
+            dx / np.sqrt(2 * np.pi) *
+            np.fft.fft(self.psi)
+        )
+
+        # Shift the zero component to center (matching my position space)
+        k = np.fft.fftshift(k)
+        phi_k = np.fft.fftshift(phi_k)
+
+        return k, phi_k
+    
+    def Expectation_p(self, hbar=1.0):
+
+        k, phi_k = self.Momentum_WaveFunction()
+
+        prob_k = np.abs(phi_k)**2
+
+        expec_k = np.trapezoid(
+            k * prob_k,
+            k
+        )
+
+        return hbar * expec_k
+
+
+
     @classmethod
     def GaussianPacket(cls, grid, x0, sigma, k0):
 

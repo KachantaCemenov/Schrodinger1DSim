@@ -4,6 +4,9 @@ from grid import Grid1D
 from wavefunction import WaveFunction
 from potential import Potential
 from Solvers.cranknicolson import CrankNicolsonSolver
+from datetime import datetime
+from matplotlib.animation import FuncAnimation
+import csv
 
 #Initialize 1D grid
 grid = Grid1D(
@@ -13,7 +16,7 @@ grid = Grid1D(
 )
 
 #Initialize wave function
-wave = WaveFunction.gaussian_packet(
+wave = WaveFunction.GaussianPacket(
     grid=grid,
     x0=-15,
     sigma=5,
@@ -43,30 +46,53 @@ solver = CrankNicolsonSolver(
 
 
 
-#Visualization
-print("Norm:", wave.Norm())
-print("<x>:", wave.Expectation_x())
-
-
+#Visualization and save
 
 
 
 frames = []
 
-for i in range(50000):
-    solver.Step(wave)
+date = datetime.now()
+fd = date.strftime("%B %d, %Y")
+print(fd)
 
-    # Only save every 20th timestep
-    if i % 20 == 0:
-        frames.append({
-            "probability": wave.probability_density().copy(),
-            "norm": wave.Norm(),
-            "expected_x": wave.Expectation_x(),
-            "time": i * solver.dt,
-            "step": i
-        })
+with open(f'Results/CSV/wavefunction_data_{fd}.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(["time", "step", "norm", "expected_x", "expected_p"])
 
-from matplotlib.animation import FuncAnimation
+    #Write in initial state because loop only return results after propagation
+    writer.writerow([
+        0, 
+        0.0,
+        wave.Norm(),
+        wave.Expectation_x(),
+        wave.Expectation_p()
+        ])
+
+    for i in range(50000):
+        solver.Step(wave)
+
+        time = i * solver.dt
+
+        writer.writerow([
+            i,
+            time,
+            wave.Norm(),
+            wave.Expectation_x(),
+            wave.Expectation_p()
+        ])
+
+        # Only save every 20th timestep for the visualization
+        if i % 20 == 0:
+            frames.append({
+                "probability": wave.ProbabilityDensity().copy(),
+                "norm": wave.Norm(),
+                "expected_x": wave.Expectation_x(),
+                "expected_p": wave.Expectation_p(),
+                "time": time,
+                "step": i
+            })
+
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
@@ -97,6 +123,7 @@ def update(frame):
         f"t = {frame['time']:.3f}   "
         f"Norm = {frame['norm']:.12f}   "
         f"<x> = {frame['expected_x']:.3f}   "
+        f"<p> = {frame['expected_p']:.3f}   "
         f"step = {frame['step']}"
         , end='\r'
     )
