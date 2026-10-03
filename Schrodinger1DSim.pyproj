@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>66bef3ea-23c4-4d94-ad9b-ddd1949dbdaa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>main.py</StartupFile>
+    <StartupFile>SSFTest.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,6 +25,8 @@
     <Compile Include="main.py" />
     <Compile Include="potential.py" />
     <Compile Include="Solvers\cranknicolson.py" />
+    <Compile Include="Solvers\SSFSolver.py" />
+    <Compile Include="SSFTest.py" />
     <Compile Include="wavefunction.py" />
     <Compile Include="grid.py" />
   </ItemGroup>

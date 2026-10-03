@@ -5,20 +5,24 @@ from scipy.sparse.linalg import splu
 
 class CrankNicolsonSolver:
 
-    def __init__(self, grid,potential,dt,mass = 1.0,hbar = 1.0):
+    def __init__(self, grid,potential,dt,mass = 1.0,hbar = 1.0, periodic = True):
         self.grid = grid
         self.potential = potential
         self.dt = dt
         self.mass = mass
         self.hbar = hbar
+        self.periodic = periodic
 
-        self._BuildMatrices()
+        self._BuildMatrices(periodic)
 
 
-    def _BuildMatrices(self):
+    def _BuildMatrices(self, periodic):
 
         dx = self.grid.dx
-        V = self.potential.values[1:-1]  # Exclude boundary points
+        if periodic:
+            V = self.potential.values
+        else: 
+            V = self.potential.values[1:-1]  # Exclude boundary points
         N = len(V)  # Number of interior points
 
         # Construct the tridiagonal Hamiltonian
@@ -27,10 +31,21 @@ class CrankNicolsonSolver:
         off_diagonal = (-self.hbar**2 / (2 * self.mass * dx**2)) 
 
         #Hamiltonian
-        H = diags([off_diagonal * np.ones(N - 1), 
-                   diagonal, 
-                   off_diagonal * np.ones(N - 1)], 
-                  offsets=[-1, 0, 1], format='csc') #csc for the scipy splu
+        if periodic:
+            H = diags([off_diagonal * np.ones(N - 1), 
+                       diagonal, 
+                       off_diagonal * np.ones(N - 1)], 
+                      offsets=[-1, 0, 1], format='lil') 
+
+
+            H[0, N - 1] = off_diagonal
+            H[N - 1, 0] = off_diagonal
+            H = H.tocsc()
+        else: 
+            H = diags([off_diagonal * np.ones(N - 1), 
+                       diagonal, 
+                       off_diagonal * np.ones(N - 1)], 
+                      offsets=[-1, 0, 1], format='csc') 
 
         I = identity(N, dtype = complex, format='csc')
 
@@ -46,12 +61,18 @@ class CrankNicolsonSolver:
         # A * psi(t+1) = B * psi(t)
 
         psi = wave.psi
-        psi_inside = psi[1:-1]  # Exclude boundary points
+        if self.periodic:
+            psi_inside = psi
+        else:
+            psi_inside = psi[1:-1]  # Exclude boundary points
 
         rhs = self.B @ psi_inside
 
         psi_new_inside = self.A_lu.solve(rhs)
         new_psi = np.zeros_like(psi, dtype=complex)
-        new_psi[1:-1] = psi_new_inside  # Exclude boundary points
+        if self.periodic:
+            new_psi = psi_new_inside
+        else:
+            new_psi = psi_new_inside[1:-1]  # Exclude boundary points]
 
         wave.psi = new_psi

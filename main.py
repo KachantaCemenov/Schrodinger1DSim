@@ -55,8 +55,9 @@ frames = []
 date = datetime.now()
 fd = date.strftime("%B %d, %Y")
 print(fd)
+print("CN")
 
-with open(f'Results/CSV/wavefunction_data_{fd}.csv', mode='w', newline='') as file:
+with open(f'Results/CSV/wavefunction_data_{fd}_CN.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(["time", "step", "norm", "expected_x", "expected_p"])
 

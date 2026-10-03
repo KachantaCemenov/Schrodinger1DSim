@@ -29,7 +29,7 @@ class SplitStepFourierSolver:
         self.T_full = np.exp(-1j * self.hbar * k**2 * self.dt / (2 * self.mass))
 
 
-    def step(self, wave):
+    def Step(self, wave):
 
         psi = wave.psi
 
