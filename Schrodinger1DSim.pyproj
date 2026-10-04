@@ -38,6 +38,7 @@
   <ItemGroup>
     <Folder Include="Results\" />
     <Folder Include="Results\CSV\" />
+    <Folder Include="Results\Comparisons\" />
     <Folder Include="Solvers\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
