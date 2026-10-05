@@ -7,33 +7,49 @@ from potential import Potential
 import csv
 from pathlib import Path
 from datetime import datetime
+from time import perf_counter
 
-folder_path = Path("Results\Comparisons")
-file_path = folder_path / f"comparison_data_{datetime.now().date.strftime('%B %d, %Y')}.csv"
+timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+folder_path =  Path("Results") / "Comparisons"
+folder_path.mkdir(parents=True, exist_ok=True)
+run_folder = folder_path / f"run_{timestamp}"
+run_folder.mkdir(parents=True, exist_ok=True)
 
 
-N_values = [256, 512, 1024, 2048]
+N_values = [256, 512, 1024, 2048, 4096]
 dt_values = [0.01, 0.005, 0.0025, 0.001]
 
-T_final = 5.0 #In seconds
+T_final = 120.0 #In seconds
 
 for N in N_values:
     for dt in dt_values:
         
+        
+        setting_folder = run_folder / f"N{N}_dt{dt}"
+        setting_folder.mkdir(parents = True, exist_ok = True)
+
+        metric_path = setting_folder / f"comparison_data.csv"
+        runtime_path = setting_folder / f"runtime_data.txt"
+
+        #Grid
         grid = Grid1D(
             x_min=-40,
             x_max=40,
             num_points=N
         )
         
+        #Wave
         initial_wave = WaveFunction.GaussianPacket(
             grid=grid,
             x0=-15,
             sigma=5,
             k0=9
         )
-        wave_cn = initial_wave.copy()
-        wave_ssf = initial_wave.copy()
+        wave_cn = initial_wave.Copy()
+        wave_ssf = initial_wave.Copy()
+
+        #Pot
         """
         potential = Potential.Barrier(
             grid,
@@ -42,12 +58,55 @@ for N in N_values:
             x_right=23
         )
         """
+        potential = Potential.FreeParticle(grid)
 
+        #Solvers
         CN_solver = CrankNicolsonSolver(grid=grid, potential=potential, dt=dt, mass=1.0, hbar=1.0)
         SSF_solver = SplitStepFourierSolver(grid=grid, potential=potential, dt=dt, mass=1.0, hbar=1.0)
         
         steps = int(T_final / dt)
 
-        for step in range(steps):
-            CN_solver.step(wave_cn)
-            SSF_solver.step(wave_ssf)
+        with open(metric_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Setting:', f'dt = {dt}', f'N = {N}'])
+            writer.writerow(["step", "time", "CN_norm", "CN_expected_x", "CN_expected_p", "CN_expected_energy", "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy"])
+            writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
+                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential)])
+
+            for step in range(steps):
+                CN_solver.Step(wave_cn)
+                SSF_solver.Step(wave_ssf)
+
+                time = (step + 1) * dt  #step go from 0 so +1
+
+                writer.writerow([
+                    step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
+                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential)
+                ])
+
+        wave_cn = initial_wave.Copy()
+        wave_ssf = initial_wave.Copy()
+        with open(runtime_path, mode='w', newline='') as file:
+            
+            file.write(f'Setting: dt = {dt} N = {N}')
+
+            start = perf_counter()
+            for step in range(steps):
+                CN_solver.Step(wave_cn)
+            CN_runtime = perf_counter() - start
+
+            start = perf_counter()
+            for step in range(steps):
+                SSF_solver.Step(wave_ssf)
+            SSF_runtime = perf_counter() - start
+
+            file.write(f"N = {N}\n")
+            file.write(f"dt = {dt}\n")
+            file.write(f"T_final = {T_final}\n")
+            file.write(f"steps = {steps}\n")
+            file.write(f'CN runtime: {CN_runtime:.6f} seconds\n')
+            file.write(f'SSF runtime: {SSF_runtime:.6f} seconds\n')
+
+        
+
+

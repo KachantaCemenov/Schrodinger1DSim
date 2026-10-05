@@ -35,6 +35,10 @@ class WaveFunction:
         # Can't use norm method here cus x is array
         return np.sum(self.grid.x * self.ProbabilityDensity() * (self.grid.dx))
 
+    def Copy(self):
+        # Return a copy 
+        return WaveFunction(self.grid, self.psi.copy())
+
 
     #Do Fourier transform
     #https://www.geeksforgeeks.org/maths/fourier-transform/
@@ -73,6 +77,29 @@ class WaveFunction:
 
         return hbar * expec_k
 
+
+    def Expectation_energy(self, potential, mass=1.0, hbar=1.0):
+
+        # T
+        k, phi_k = self.Momentum_WaveFunction()
+
+        prob_k = np.abs(phi_k)**2
+
+        norm_k = np.trapezoid(prob_k, k)
+
+        kinetic = np.trapezoid((hbar**2 * k**2 / (2 * mass)) * prob_k, k) / norm_k
+
+
+        # V
+        x = self.grid.x
+        prob_x = self.ProbabilityDensity()
+
+        norm_x = np.trapezoid(prob_x, x)
+
+        potential_energy = np.trapezoid(potential.values * prob_x, x) / norm_x
+
+
+        return (kinetic + potential_energy).real
 
 
     @classmethod
