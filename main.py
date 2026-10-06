@@ -16,25 +16,35 @@ grid = Grid1D(
 )
 
 #Initialize wave function
+"""
 wave = WaveFunction.GaussianPacket(
     grid=grid,
     x0=-15,
     sigma=5,
     k0=9
 )
+wave = wave.Normalize()
+"""
+wave = WaveFunction.HarmonicOscillatorEigenstate(
+    grid=grid,
+    n=0,
+    mass=1.0,
+    omega=1.0,
+    hbar=1.0
+)
 
 #Initialize potential function
 
 #potential = Potential.FreeParticle(grid)
-#potential = Potential.HarmonicOscillator(grid, mass=1.0, omega=1.0)
-
+potential = Potential.HarmonicOscillator(grid, mass=1.0, omega=1.0)
+"""
 potential = Potential.Barrier(
     grid,
     height=30,
-    x_left=10,
+    x_left=0,
     x_right=23
 )
-
+"""
 #Initialize Crank-Nicolson solver
 solver = CrankNicolsonSolver(
     grid=grid,

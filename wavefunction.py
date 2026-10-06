@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.special import eval_hermite
+from math import factorial
 
 
 class WaveFunction:
@@ -121,6 +123,53 @@ class WaveFunction:
 
         wave = cls(grid, psi)
 
+        wave.Normalize()
+
+        return wave
+
+
+    """
+    This one has an analytically defined energy formula: 
+    E = h_bar^2 * k^2 / (2 * m)
+    k is wave number, it's dependent on n
+    """
+    @classmethod
+    def PlaneWave(cls, grid, n: int): #n is state number (-/+ 1, -/+2, ...)
+        L = grid.x[-1] - grid.x[0]
+
+        k = 2 * np.pi * n / L
+
+        psi = np.exp(1j * k * grid.x)
+
+        wave = cls(grid, psi)
+        wave.Normalize()
+
+        return wave
+
+
+
+    """
+    https://phys.libretexts.org/Bookshelves/University_Physics/University_Physics_%28OpenStax%29/University_Physics_III_-_Optics_and_Modern_Physics_%28OpenStax%29/07%3A_Quantum_Mechanics/7.06%3A_The_Quantum_Harmonic_Oscillator
+    https://en.wikipedia.org/wiki/Quantum_harmonic_oscillator
+
+    H = h_bar * omega * (n + 1/2)
+    n is wave number, n = 0, 1, 2, ...
+
+    In a harmonic potential the shape should hold
+    """
+    @classmethod
+    def HarmonicOscillatorEigenstate(cls, grid, n: int, mass=1.0, omega=1.0, hbar=1.0, center=0.0):
+        x = grid.x
+
+        #bunch of constants
+        const = np.sqrt(mass * omega / (hbar * 2)) * (x - center)
+
+        #normalization term
+        normalization = (mass * omega / (hbar * np.pi))**(1/4) * (1 / np.sqrt(2**n * factorial(n)))
+        
+        psi = normalization * eval_hermite(n, const) * np.exp(-mass * omega * (x - center)**2 / (2 * hbar))
+
+        wave = cls(grid, psi)
         wave.Normalize()
 
         return wave

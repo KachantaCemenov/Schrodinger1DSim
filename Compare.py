@@ -70,6 +70,7 @@ for N in N_values:
             writer = csv.writer(file)
             writer.writerow(['Setting:', f'dt = {dt}', f'N = {N}'])
             writer.writerow(["step", "time", "CN_norm", "CN_expected_x", "CN_expected_p", "CN_expected_energy", "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy"])
+            #Write initial state
             writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
                              wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential)])
 
@@ -86,10 +87,10 @@ for N in N_values:
 
         wave_cn = initial_wave.Copy()
         wave_ssf = initial_wave.Copy()
+
+        #Run it again to record runtime
         with open(runtime_path, mode='w', newline='') as file:
             
-            file.write(f'Setting: dt = {dt} N = {N}')
-
             start = perf_counter()
             for step in range(steps):
                 CN_solver.Step(wave_cn)
