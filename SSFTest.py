@@ -20,25 +20,28 @@ grid = Grid1D(
 )
 
 #Initialize wave function
+"""
 wave = WaveFunction.GaussianPacket(
     grid=grid,
     x0=-15,
     sigma=5,
     k0=9
 )
-
+"""
+wave = WaveFunction.PlaneWave(
+    grid=grid, n = 9)
 #Initialize potential function
 
-#potential = Potential.FreeParticle(grid)
+potential = Potential.FreeParticle(grid)
 #potential = Potential.HarmonicOscillator(grid, mass=1.0, omega=1.0)
-
+"""
 potential = Potential.Barrier(
     grid,
     height=30,
     x_left=10,
     x_right=23
 )
-
+"""
 #Initialize SSF solver
 solver = SplitStepFourierSolver(
     grid=grid,

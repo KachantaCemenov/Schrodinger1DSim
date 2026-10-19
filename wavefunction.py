@@ -72,10 +72,7 @@ class WaveFunction:
 
         prob_k = np.abs(phi_k)**2
 
-        expec_k = np.trapezoid(
-            k * prob_k,
-            k
-        )
+        expec_k = np.trapezoid(k * prob_k, k)
 
         return hbar * expec_k
 
@@ -134,7 +131,7 @@ class WaveFunction:
     k is wave number, it's dependent on n
     """
     @classmethod
-    def PlaneWave(cls, grid, n: int): #n is state number (-/+ 1, -/+2, ...)
+    def PlaneWave(cls, grid, n: int = 1): #n is state number (-/+ 1, -/+2, ...)
         L = grid.x[-1] - grid.x[0]
 
         k = 2 * np.pi * n / L
