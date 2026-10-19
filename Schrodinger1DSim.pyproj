@@ -22,9 +22,11 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Compare.py" />
     <Compile Include="CNTest.py" />
+    <Compile Include="CompareMethods.py" />
     <Compile Include="potential.py" />
+    <Compile Include="read_data.py" />
+    <Compile Include="RunComparison.py" />
     <Compile Include="Solvers\cranknicolson.py" />
     <Compile Include="Solvers\SSFSolver.py" />
     <Compile Include="SSFTest.py" />
