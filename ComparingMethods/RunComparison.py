@@ -13,9 +13,9 @@ dt_values = [0.01, 0.005, 0.0025, 0.001]
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-run_folder = (
-    Path("Results")/"Comparisons"/f"run_{timestamp}"
-)
+comparing_folder = Path(__file__).resolve().parent
+
+run_folder = (comparing_folder/"Results"/f"run_{timestamp}")
 
 run_folder.mkdir(parents=True,exist_ok=True)
 
