@@ -80,6 +80,7 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, wave_cn: WaveFunction, wave_
 
                 time = (step + 1) * dt  #step go from 0 so +1
 
+                #Calculate L^2 errors for both CN and SSF
                 exact_psi = analytical(time)
                 cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
                 ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
