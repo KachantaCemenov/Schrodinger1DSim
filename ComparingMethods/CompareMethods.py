@@ -117,7 +117,7 @@ def RunSolvers_AndWriteRuntime(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: 
         file.write(f'SSF runtime: {SSF_runtime:.6f} seconds\n')
 
 
-
+#L^2 error is integral of (numerical - analytical)^2 over dx
 def L2Error(grid, numerical, analytical):
     diff = numerical - analytical 
 

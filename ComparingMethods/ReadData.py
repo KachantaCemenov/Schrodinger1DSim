@@ -15,14 +15,14 @@ def ReadSetting(setting_folder: Path):
     #change at each step
     data["CN_delta_norm"] = data["CN_norm"].diff().fillna(0)
     data["SSF_delta_norm"] = data["SSF_norm"].diff().fillna(0)
-    data["CN_delta_energy"] = data["CN_energy"].diff().fillna(0)
-    data["SSF_delta_energy"] = data["SSF_energy"].diff().fillna(0)
+    data["CN_delta_energy"] = data["CN_expected_energy"].diff().fillna(0)
+    data["SSF_delta_energy"] = data["SSF_expected_energy"].diff().fillna(0)
 
     #Relative change to initial value
     data["CN_norm_error"] = abs(data["CN_norm"] - data["CN_norm"].iloc[0])
     data["SSF_norm_error"] = abs(data["SSF_norm"] - data["SSF_norm"].iloc[0])
-    data["CN_energy_error"] = abs(data["CN_energy_error"] - data["CN_energy_error"].iloc[0])
-    data["SSF_energy_error"] = abs(data["SSF_energy_error"] - data["SSF_energy_error"].iloc[0])
+    data["CN_energy_error"] = abs(data["CN_expected_energy"] - data["CN_expected_energy"].iloc[0])
+    data["SSF_energy_error"] = abs(data["SSF_expected_energy"] - data["SSF_expected_energy"].iloc[0])
 
     return data
 
@@ -32,7 +32,7 @@ def ReadSetting(setting_folder: Path):
 
 def ReadRuntime(setting_folder: Path):
 
-    runtime_path = settings_folder / "runtime_data.txt"
+    runtime_path = setting_folder / "runtime_data.txt"
     text = runtime_path.read_text()
 
 
@@ -40,8 +40,8 @@ def ReadRuntime(setting_folder: Path):
 
     ssf_match = re.search(r"SSF runtime:\s*([\d.]+)",text)
 
-    cn_runtime = float(cn_match)
-    ssf_runtime = float(ssf_match)
+    cn_runtime = float(cn_match.group(1))
+    ssf_runtime = float(ssf_match.group(1))
 
     return cn_runtime, ssf_runtime
 
@@ -88,3 +88,40 @@ def AnalyzeSetting(setting_folder: Path):
 
     return cn_result, ssf_result
 
+
+def AnalyzeProblem(problem_folder : Path):
+    res = []
+
+    for setting_folder in problem_folder.iterdir():
+        
+
+        cn_res, ssf_res = AnalyzeSetting(setting_folder)
+        cn_res["problem"] = problem_folder.name
+        ssf_res["problem"] = problem_folder.name
+
+        res.append(cn_res)
+        res.append(ssf_res)
+
+    summary = pd.DataFrame(res)
+    summary = summary.sort_values(by=["N", "dt", "method"])
+
+    return summary
+
+def AnalyzeRun(run_folder: Path):
+    all_res = []
+
+    for problem_folder in run_folder.iterdir():
+
+        problem_sum = AnalyzeProblem(problem_folder)
+        all_res.append(problem_sum)
+
+    #https://pandas.pydata.org/docs/reference/api/pandas.concat.html
+    summary = pd.concat(all_res, ignore_index = True)
+
+    return summary
+
+run_folder = RESULTS_FOLDER / "run_2026-10-20_14-48-21"
+
+summary = AnalyzeRun(run_folder)
+
+print(summary)
