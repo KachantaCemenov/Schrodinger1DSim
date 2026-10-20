@@ -14,6 +14,8 @@ class WaveFunction:
         self.grid = grid
 
         self.psi = np.asarray(psi, complex);
+
+        self.name = "" #declare in the initialization methods
        
         #Include a check for sizes of these two arrays
 
@@ -122,6 +124,8 @@ class WaveFunction:
 
         wave.Normalize()
 
+        wave.name = "GaussianPacket"
+
         return wave
 
 
@@ -140,6 +144,8 @@ class WaveFunction:
 
         wave = cls(grid, psi)
         wave.Normalize()
+
+        wave.name = "PlaneWave"
 
         return wave
 
@@ -168,5 +174,7 @@ class WaveFunction:
 
         wave = cls(grid, psi)
         wave.Normalize()
+
+        wave.name = "HarmonicOscillatorEigenstate"
 
         return wave

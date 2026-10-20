@@ -8,6 +8,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 from time import perf_counter
+import numpy as np
 
 
 """
@@ -16,22 +17,15 @@ This script contains methods to run a problem using both solvers on a specific c
 This script is meant to be used in another scripts that read the data as comparison.
 
 """
-timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-folder_path =  Path("Results") / "Comparisons"
-folder_path.mkdir(parents=True, exist_ok=True)
-run_folder = folder_path / f"run_{timestamp}"
-run_folder.mkdir(parents=True, exist_ok=True)
 
 
 
 
-def RunComparison(problem_name: str, run_folder: Path,
-                  N, dt, T_final, grid, wave_func, potential, 
-                  mass: float = 1.0, hbar: float = 1.0):
+def RunComparison(setting_folder : Path,
+                  N, dt, T_final, grid, wave_func, potential, analytical,
+                  mass: float = 1.0, hbar: float = 1.0
+                  ):
     
-
-    setting_folder = run_folder / f"N{N}_dt{dt}"
-    setting_folder.mkdir(parents = True, exist_ok = True)
 
     #Initialize solvers
     CN_solver = CrankNicolsonSolver(grid=grid, potential=potential, dt=dt, mass=mass, hbar=hbar)
@@ -42,7 +36,7 @@ def RunComparison(problem_name: str, run_folder: Path,
     wave_cn = wave_func.Copy()  # Create a copy of the wave function for the CN solver
     wave_ssf = wave_func.Copy()  # Create a copy of the wave function for the SSF solver
 
-    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, 
+    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, grid = grid, wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, analytical = analytical,
                                 CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder)
 
     wave_cn = wave_func.Copy()  
@@ -54,14 +48,11 @@ def RunComparison(problem_name: str, run_folder: Path,
 
 
 
-def RunSolvers_AndWriteToFile(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver,
+def RunSolvers_AndWriteToFile(N, dt, T_final, grid, wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, analytical,
+                              CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver,
                 setting_folder):
 
     metric_path = setting_folder / f"comparison_data.csv" #path for metrics
-
-    #Solvers
-    #CN_solver = CrankNicolsonSolver(grid=grid, potential=potential, dt=dt, mass=mass, hbar=hbar)
-    #SSF_solver = SplitStepFourierSolver(grid=grid, potential=pot_func, dt=dt, mass=mass, hbar=hbar)
 
     steps = int(T_final / dt)
 
@@ -70,10 +61,18 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: W
             writer = csv.writer(file)
             writer.writerow(['Setting:', f'dt = {dt}', f'N = {N}'])
             writer.writerow(["step", "time", "CN_norm", "CN_expected_x", "CN_expected_p", "CN_expected_energy", 
-                             "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy"])
+                             "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy", "CN_L2Error", "SSF_L2Error"])
+
+
+            #Analytical psi at t = 0
+            exact_psi = analytical(0)
+            cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
+            ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
+
             #Write initial state
             writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
-                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential)])
+                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential),
+                             cn_L2, ssf_L2])
 
             for step in range(steps):
                 CN_solver.Step(wave_cn)
@@ -81,9 +80,14 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: W
 
                 time = (step + 1) * dt  #step go from 0 so +1
 
+                exact_psi = analytical(time)
+                cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
+                ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
+
                 writer.writerow([
                     step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
-                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential)
+                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential),
+                    cn_L2, ssf_L2
                 ])
 
 def RunSolvers_AndWriteRuntime(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
@@ -113,7 +117,12 @@ def RunSolvers_AndWriteRuntime(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: 
 
 
 
+def L2Error(grid, numerical, analytical):
+    diff = numerical - analytical 
 
+    L2err = np.sqrt(np.trapezoid(np.abs(diff)**2, grid.x))
+
+    return L2err
 
     
 """

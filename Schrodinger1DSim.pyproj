@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>66bef3ea-23c4-4d94-ad9b-ddd1949dbdaa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>SSFTest.py</StartupFile>
+    <StartupFile>RunComparison.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,6 +22,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AnalyticalSolutions.py" />
     <Compile Include="CNTest.py" />
     <Compile Include="CompareMethods.py" />
     <Compile Include="potential.py" />
