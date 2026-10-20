@@ -28,7 +28,6 @@
     <Compile Include="ComparingMethods\ReadData.py" />
     <Compile Include="ComparingMethods\RunComparison.py" />
     <Compile Include="potential.py" />
-    <Compile Include="read_data.py" />
     <Compile Include="Solvers\cranknicolson.py" />
     <Compile Include="Solvers\SSFSolver.py" />
     <Compile Include="SSFTest.py" />
