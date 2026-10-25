@@ -27,6 +27,7 @@
     <Compile Include="ComparingMethods\CompareMethods.py" />
     <Compile Include="ComparingMethods\ReadData.py" />
     <Compile Include="ComparingMethods\RunComparison.py" />
+    <Compile Include="DesktopUI\WaveFuncParser.py" />
     <Compile Include="potential.py" />
     <Compile Include="Solvers\cranknicolson.py" />
     <Compile Include="Solvers\SSFSolver.py" />
@@ -43,6 +44,7 @@
     <Folder Include="ComparingMethods\Results\" />
     <Folder Include="ComparingMethods\Results\Comparisons\" />
     <Folder Include="ComparingMethods\Results\CSV\" />
+    <Folder Include="DesktopUI\" />
     <Folder Include="Solvers\" />
   </ItemGroup>
   <ItemGroup>
