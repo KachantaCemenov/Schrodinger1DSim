@@ -166,12 +166,12 @@ def GetMetricColumns(metric):
 def PlotMetric_vs_Time(setting_folder, metric = "L2"): 
     data = ReadSetting(setting_folder)
 
-    cn_column, ssf_column, ylabel = GetMetricColumns(metric)
+    cn_col, ssf_col, ylabel = GetMetricColumns(metric)
 
     plt.figure()
 
-    plt.plot(data["time"], data[cn_column], label = "CN")
-    plt.plot(data["time"], data[ssf_column], label = "SSF")
+    plt.plot(data["time"], data[cn_col], label = "CN")
+    plt.plot(data["time"], data[ssf_col], label = "SSF")
 
     plt.xlabel("Time")
     plt.ylabel(ylabel)
@@ -201,14 +201,14 @@ def PlotMetric_vs_Dt(problem_folder, fixed_N, metric = "L2", stat = "max"): #max
             continue
 
         data = ReadSetting(setting_folder)
-        cn_column, ssf_column, ylabel = GetMetricColumns(metric)
+        cn_col, ssf_col, ylabel = GetMetricColumns(metric)
 
         if stat == "max":
-            cn_value = abs(data[cn_column]).max()
-            ssf_value = abs(data[ssf_column]).max()
+            cn_value = abs(data[cn_col]).max()
+            ssf_value = abs(data[ssf_col]).max()
         elif stat == "final":
-            cn_value = abs(data[cn_column]).iloc[-1]
-            ssf_value = abs(data[ssf_column]).iloc[-1]
+            cn_value = abs(data[cn_col]).iloc[-1]
+            ssf_value = abs(data[ssf_col]).iloc[-1]
         else:
             raise ValueError("Wrong stat parameter")
 
@@ -248,7 +248,7 @@ def PlotMetric_vs_Dt(problem_folder, fixed_N, metric = "L2", stat = "max"): #max
 
     plt.show()
 
-#Same as above, reverse. TODO: consider joining these two methods
+#Same as above, reverse (fixed dt changing N) . TODO: consider joining these two methods
 def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max or final
     row = []
 
@@ -265,14 +265,14 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
             continue
 
         data = ReadSetting(setting_folder)
-        cn_column, ssf_column, ylabel = GetMetricColumns(metric)
+        cn_col, ssf_col, ylabel = GetMetricColumns(metric)
 
         if stat == "max":
-            cn_value = abs(data[cn_column]).max()
-            ssf_value = abs(data[ssf_column]).max()
+            cn_value = abs(data[cn_col]).max()
+            ssf_value = abs(data[ssf_col]).max()
         elif stat == "final":
-            cn_value = abs(data[cn_column]).iloc[-1]
-            ssf_value = abs(data[ssf_column]).iloc[-1]
+            cn_value = abs(data[cn_col]).iloc[-1]
+            ssf_value = abs(data[ssf_col]).iloc[-1]
         else:
             raise ValueError("Wrong stat parameter")
 
@@ -312,6 +312,76 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
 
     plt.show()
 
+def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
+    row = []
+
+    for setting_folder in problem_folder.iterdir():
+        data = ReadSetting(setting_folder)
+
+        cn_runtime, ssf_runtime = ReadRuntime(setting_folder)
+        cn_col, ssf_col, ylabel = GetMetricColumns(metric)
+
+        if stat == "max":
+            cn_value = abs(data[cn_col]).max()
+            ssf_value = abs(data[ssf_col]).max()
+        elif stat == "final":
+            cn_value = abs(data[cn_col]).iloc[-1]
+            ssf_value = abs(data[ssf_col]).iloc[-1]
+        else:
+            raise ValueError("Wrong stat parameter")
+
+        row.append({
+                "runtime": cn_runtime,
+                "metric": cn_value,
+                "method": "CN"
+            })
+        row.append({
+                "runtime": ssf_runtime,
+                "metric": ssf_value,
+                "method": "SSF"
+            })
+
+    res = pd.DataFrame(row)
+
+    plt.figure()
+
+    cn = res[
+        res["method"] == "CN"
+    ]
+
+    ssf = res[
+        res["method"] == "SSF"
+    ]
+
+    plt.scatter(
+        cn["runtime"],
+        cn["metric"],
+        label="Crank-Nicolson"
+    )
+
+    plt.scatter(
+        ssf["runtime"],
+        ssf["metric"],
+        label="Split-Step Fourier"
+    )
+
+    plt.xlabel("Runtime (seconds)")
+    plt.ylabel(
+        f"{stat.capitalize()} {ylabel}"
+    )
+
+    plt.title(
+        f"Runtime vs "
+        f"{stat.capitalize()} {ylabel}"
+    )
+
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+
+
 
 #Testingg
 run_folder = RESULTS_FOLDER / "run_2026-10-20_14-48-21"
@@ -324,4 +394,9 @@ setting_folder = problem_folder / "N1024_dt0.001"
 
 #PlotMetric_vs_Time(setting_folder, metric = "L2")
 #PlotMetric_vs_Dt(problem_folder,fixed_N=1024,metric="L2",stat="max")
-PlotMetric_vs_N(problem_folder,fixed_dt=0.005,metric="L2",stat="max")
+#PlotMetric_vs_N(problem_folder,fixed_dt=0.005,metric="L2",stat="max")
+PlotRuntime_vs_Metric(
+    problem_folder,
+    metric="L2",
+    stat="max"
+)
