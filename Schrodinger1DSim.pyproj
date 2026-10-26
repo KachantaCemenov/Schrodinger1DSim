@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>66bef3ea-23c4-4d94-ad9b-ddd1949dbdaa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>ComparingMethods\ReadData.py</StartupFile>
+    <StartupFile>ComparingMethods\RunComparison.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

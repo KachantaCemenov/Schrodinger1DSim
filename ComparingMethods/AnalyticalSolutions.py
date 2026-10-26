@@ -6,7 +6,7 @@ https://archive.org/details/SchultenNotesOnQuantumMechanicsFreescience1877/page/
 eq 2.71, p. 21, chapter 2.4
 TO DO: Write a document in LaTex about how that equation was manipulated (they use a different convention for the packet width)
 """
-def FreeGaussianAnalytical(grid,t,x0,sigma,k0,mass=1.0,hbar=1.0):
+def FreeGaussianAnalytical(grid, t, x0, sigma, k0, mass=1.0, hbar=1.0):
     x = grid.x
 
     tau = hbar * t / (2 * mass * sigma**2) #Just a substitution term for a frequently-appear constant term
@@ -27,9 +27,24 @@ def FreeGaussianAnalytical(grid,t,x0,sigma,k0,mass=1.0,hbar=1.0):
 E_n = h_bar * omega * (n + 1/2)
 psi_n(x,t) = psi_n(x,0) * exp(-i * E_n * t / h_bar)
 """
-def HarmonicOscillatorEigenstateAnalytical(initial_wave,t,n,omega,hbar=1.0):
+def HarmonicOscillatorEigenstateAnalytical(initial_wave, t, n, omega, hbar=1.0):
     energy = hbar * omega * (n + 0.5)
 
     phase = np.exp(-1j * energy * t / hbar)
 
     return initial_wave.psi * phase
+
+
+
+def PlaneWaveAnalytical(initial_wave, grid, t, n, mass = 1.0, hbar = 1.0):
+    L = len(grid.x) * grid.dx
+
+    k = 2 * np.pi * n / L
+
+    #E of free particle = p^2 / 2m = hbar^2*k^2 / 2m
+    #Planck relation p = hbar * k 
+    energy = (hbar**2 * k**2) / (2*mass)
+    
+    propagator = np.exp(-1j * energy * t / hbar)
+
+    return initial_wave.psi * propagator

@@ -51,7 +51,7 @@ def AnalyzeSetting(setting_folder: Path):
     cn_runtime, ssf_runtime = ReadRuntime(setting_folder)
 
     #Extract the number N and dt from folder name
-    match = re.fullmatch(r"N(\d+)_dt([0-9.]+)", setting_folder.name) #Put eE+- inside [] when I do scientific notation for dt
+    match = re.fullmatch(r"N(\d+)_dt([0-9.eE+-]+)", setting_folder.name) 
 
     if match is None:
         raise ValueError(f"Invalid setting folder name: {setting_folder.name}")
@@ -190,7 +190,7 @@ def PlotMetric_vs_Dt(problem_folder, fixed_N, metric = "L2", stat = "max"): #max
 
     for setting_folder in problem_folder.iterdir():
         
-        match = re.fullmatch(r"N(\d+)_dt([0-9.]+)", setting_folder.name)
+        match = re.fullmatch(r"N(\d+)_dt([0-9.eE+-]+)", setting_folder.name)
         if match is None:
             continue
 
@@ -254,7 +254,7 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
 
     for setting_folder in problem_folder.iterdir():
         
-        match = re.fullmatch(r"N(\d+)_dt([0-9.]+)", setting_folder.name)
+        match = re.fullmatch(r"N(\d+)_dt([0-9.eE+-]+)", setting_folder.name)
         if match is None:
             continue
 

@@ -33,7 +33,7 @@ def ParseWaveFunction(expression: str, grid):
     psi = np.asarray(psi, dtype=complex)
 
     #Checking for some special cases
-    #Convert to array if psi is a scalar
+    #If psi ended up a scalar, convert that into array
     if psi.ndim == 0:
         psi = np.full(len(grid.x),psi,dtype=complex)
 
@@ -64,7 +64,7 @@ def _EvaluateNode(node, x):
         if isinstance(node.value, (int, float, complex)):
             return node.value
 
-        raise ValueError("Only numeric constants are allowed")
+        raise ValueError("Only numeric (int/float/complex) constants are allowed")
 
 
     # Chara: x, pi, e, i, j

@@ -1,15 +1,26 @@
+import sys
+print(sys.executable)
+
 from pathlib import Path
 from datetime import datetime
+from spicy.constants import hbar, m_e
 
 from CompareMethods import RunComparison
 from grid import Grid1D
 from wavefunction import WaveFunction
 from potential import Potential
-from AnalyticalSolutions import FreeGaussianAnalytical, HarmonicOscillatorEigenstateAnalytical
+from AnalyticalSolutions import FreeGaussianAnalytical, HarmonicOscillatorEigenstateAnalytical, PlaneWaveAnalytical
 
 
-N_values = [256, 512, 1024, 2048]
-dt_values = [0.01, 0.005, 0.0025, 0.001]
+HBAR = hbar
+ELECTRON_MASS = m_e
+
+N_values = [500, 1000, 2000]
+dt_values = [1e-17,       #0.01 fs
+             5e-18,       #0.005 fs
+             2.5e-18,     #0.0025 fs
+             1e-18        #0.001 fs
+             ]
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -23,12 +34,21 @@ run_folder.mkdir(parents=True,exist_ok=True)
 #Each of these is a benchmark problem
 def GaussianFree(grid): #grid differs on each N
 
+    """
     x0 = -15
     sigma = 5
     k0 = 3
     mass = 1.0
     hbar = 1.0
+    """
+    mass = ELECTRON_MASS
+    hbar = HBAR
 
+    x0 = -20e-9    # 20nm to the left
+    sigma = 2e-9   #width 2nm
+    k0 =  2e9     #wavelength = 2pi/k0 = about 3nm here, in reasonable range for electron
+
+    #REMEMBER: v = hbar*k0 / m - use that to estimate where the particle end. Best not let it go near the boundary
 
     wave = WaveFunction.GaussianPacket(grid=grid, x0=x0, sigma=sigma, k0=k0)
 
@@ -42,10 +62,15 @@ def GaussianFree(grid): #grid differs on each N
     return wave, potential, analytical
 
 def HarmonicOscillatorGroundState(grid):
-
+    """
     mass = 1.0
     omega = 1.0
     hbar = 1.0
+    n = 0
+    """
+    mass = ELECTRON_MASS
+    omega = 1e15     # T = 2pi / omega = about 6.28 fs
+    hbar = HBAR
     n = 0
 
     wave = WaveFunction.HarmonicOscillatorEigenstate(grid=grid, n=n, mass=mass, 
@@ -59,21 +84,44 @@ def HarmonicOscillatorGroundState(grid):
 
     return wave, potential, analytical
 
+def PlaneWaveFree(grid):
+
+    n = 4
+    mass = ELECTRON_MASS
+    hbar = HBAR
+
+    wave = WaveFunction.PlaneWave(grid=grid, n=n)
+    potential = Potential.FreeParticle(grid)
+
+    def analytical(t):
+        return PlaneWaveAnalytical(initial_wave=wave, grid=grid, t=t, n=n,mass=mass, hbar=hbar)
+
+    return wave, potential, analytical
+
+
 benchmarks = [
     {
         "name": "Gaussian_Free",
         "function": GaussianFree,
-        "x_min": -40,
-        "x_max": 40,
-        "T_final": 5.0
+        "x_min": -50e-9,
+        "x_max": 50e-9,
+        "T_final": 100e-15
     },
 
     {
         "name": "HO_Ground",
         "function": HarmonicOscillatorGroundState,
-        "x_min": -10,
-        "x_max": 10,
-        "T_final": 10.0
+        "x_min": -10e-9,
+        "x_max": 10e-9,
+        "T_final": 100e-15
+    },
+
+    {
+        "name": "PlaneWave_Free",
+        "function": PlaneWaveFree,
+        "x_min": -50e-9,
+        "x_max": 50e-9,
+        "T_final": 100e-15
     }
 ]
 

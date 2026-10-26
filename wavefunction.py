@@ -136,7 +136,9 @@ class WaveFunction:
     """
     @classmethod
     def PlaneWave(cls, grid, n: int = 1): #n is state number (-/+ 1, -/+2, ...)
-        L = grid.x[-1] - grid.x[0]
+       
+        #L = grid.x[-1] - grid.x[0]
+        L = len(grid.x) * grid.dx #Acommodating the periodic position space
 
         k = 2 * np.pi * n / L
 
