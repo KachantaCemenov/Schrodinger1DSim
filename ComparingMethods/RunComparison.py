@@ -1,9 +1,6 @@
-import sys
-print(sys.executable)
-
 from pathlib import Path
 from datetime import datetime
-from spicy.constants import hbar, m_e
+from scipy.constants import hbar, m_e
 
 from CompareMethods import RunComparison
 from grid import Grid1D
