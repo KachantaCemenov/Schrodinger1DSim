@@ -562,32 +562,33 @@ PlotRuntime_vs_Metric(
     stat="max"
 )
 """
+if __name__ == "__main__":
+    run_folder = GetLatestRun()
 
-run_folder = GetLatestRun()
+    print("Reading:", run_folder.name)
 
-print("Reading:", run_folder.name)
+    summary = AnalyzeRun(run_folder)
 
-summary = AnalyzeRun(run_folder)
+    print(summary)
 
-print(summary)
+    PlotAllGraphs(run_folder)
 
-PlotAllGraphs(run_folder)
+    # Gaussian coherent state in harmonic potential
+    gaussian = run_folder / "Gaussian_Harmonic"
 
-# Gaussian coherent state in harmonic potential
-gaussian = run_folder / "Gaussian_Harmonic"
+    PlotL2_LogLog_vs_Dt(gaussian,fixed_N=4000)
 
-PlotL2_LogLog_vs_Dt(gaussian,fixed_N=4000)
-
-PlotL2_LogLog_vs_Dx(gaussian,
-                    fixed_dt=2.5e-18,
-                    domain_length=10e-9)
+    PlotL2_LogLog_vs_Dx(gaussian,
+                        fixed_dt=2.5e-18,
+                        domain_length=10e-9)
 
 
-# Harmonic oscillator ground state
-ho = run_folder / "HO_Ground"
+    # Harmonic oscillator ground state
+    ho = run_folder / "HO_Ground"
 
-PlotL2_LogLog_vs_Dt(ho,fixed_N=4000)
-PlotL2_LogLog_vs_Dx(ho,
-                    fixed_dt=2.5e-18,
-                    domain_length=20e-9
-                    )
+    PlotL2_LogLog_vs_Dt(ho,fixed_N=4000)
+    PlotL2_LogLog_vs_Dx(ho,
+                        fixed_dt=2.5e-18,
+                        domain_length=20e-9
+                        )
+

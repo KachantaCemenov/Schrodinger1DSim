@@ -203,39 +203,39 @@ benchmarks = [
         "T_final": 100e-15
     }
 ]
+if __name__ == "main":
+    #Run the benchmarks for each N and dt
+    for benchmark in benchmarks:
 
-#Run the benchmarks for each N and dt
-for benchmark in benchmarks:
+        problem_folder = (run_folder / benchmark["name"])
 
-    problem_folder = (run_folder / benchmark["name"])
+        problem_folder.mkdir(parents=True,exist_ok=True)
 
-    problem_folder.mkdir(parents=True,exist_ok=True)
+        for N in N_values:
 
-    for N in N_values:
-
-        grid = Grid1D(
-            x_min=benchmark["x_min"],
-            x_max=benchmark["x_max"],
-            num_points=N
-        )
-
-        wave, potential, analytical = benchmark["function"](grid)
-
-        for dt in dt_values:
-
-            setting_folder = (problem_folder/ f"N{N}_dt{dt}")
-            setting_folder.mkdir(parents=True,exist_ok=True)
-
-            print(benchmark["name"],"N =", N,"dt =", dt)
-
-            RunComparison(
-                setting_folder=setting_folder,
-                N=N,
-                dt=dt,
-                T_final=benchmark["T_final"],
-                grid=grid,
-                wave_func=wave,
-                potential=potential,
-                analytical=analytical,
-                mass=ELECTRON_MASS, hbar=HBAR 
+            grid = Grid1D(
+                x_min=benchmark["x_min"],
+                x_max=benchmark["x_max"],
+                num_points=N
             )
+
+            wave, potential, analytical = benchmark["function"](grid)
+
+            for dt in dt_values:
+
+                setting_folder = (problem_folder/ f"N{N}_dt{dt}")
+                setting_folder.mkdir(parents=True,exist_ok=True)
+
+                print(benchmark["name"],"N =", N,"dt =", dt)
+
+                RunComparison(
+                    setting_folder=setting_folder,
+                    N=N,
+                    dt=dt,
+                    T_final=benchmark["T_final"],
+                    grid=grid,
+                    wave_func=wave,
+                    potential=potential,
+                    analytical=analytical,
+                    mass=ELECTRON_MASS, hbar=HBAR 
+                )
