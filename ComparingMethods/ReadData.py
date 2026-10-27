@@ -6,6 +6,26 @@ import matplotlib.pyplot as plt
 BASE_FOLDER = Path(__file__).resolve().parent
 RESULTS_FOLDER = BASE_FOLDER / "Results"
 
+def GetLatestRun():
+    runs = [folder for folder in RESULTS_FOLDER.iterdir() 
+            if folder.is_dir() and folder.name.startswith("run_")]
+    if not runs:
+        raise FileNotFoundError("No run folders found")
+    #timestamp format: run_YYYY_MM_DD_HH-MM-SS 
+    latest_run = max(runs, key = lambda folder: folder.name)
+    return latest_run
+
+def SavePlot(problem_folder: Path, category: str, metric: str, filename: str):
+    run_folder = problem_folder.parent
+
+    graph_folder = run_folder / "Graphs" / problem_folder.name / category / metric
+    graph_folder.mkdir(parents = True, exist_ok = True)
+
+    graph_path = graph_folder / f"{filename}.png"
+    plt.savefig(graph_path, dpi = 100, bbox_inches = "tight")
+    print("Save: ", graph_path)
+
+
 def ReadSetting(setting_folder: Path):
     comparison_path = setting_folder / "comparison_data.csv"
 
@@ -112,6 +132,11 @@ def AnalyzeRun(run_folder: Path):
 
     for problem_folder in run_folder.iterdir():
 
+        if not problem_folder.is_dir():
+            continue
+        if problem_folder.name == "Graphs":
+            continue
+
         problem_sum = AnalyzeProblem(problem_folder)
         all_res.append(problem_sum)
 
@@ -162,13 +187,16 @@ def GetMetricColumns(metric):
 
     return metrics[metric]
 
+
+#PLOTTING FUNTIONS 
+
 #Look into one problem (fixed N fixed dt) csv file and plot the error in that as step propagate 
 def PlotMetric_vs_Time(setting_folder, metric = "L2"): 
     data = ReadSetting(setting_folder)
 
     cn_col, ssf_col, ylabel = GetMetricColumns(metric)
 
-    plt.figure()
+    plt.figure(figsize=(7,5))
 
     plt.plot(data["time"], data[cn_col], label = "CN")
     plt.plot(data["time"], data[ssf_col], label = "SSF")
@@ -181,7 +209,10 @@ def PlotMetric_vs_Time(setting_folder, metric = "L2"):
 
     plt.legend()
     plt.grid()
-    plt.show()
+
+    SavePlot(setting_folder.parent, "VsTime_in_each_setting", metric, f"{metric}_vs_time_{setting_folder.name}")
+
+    plt.close()
 
 #Look into all setting folders with fixed N and plot them as dt change
 #arg stat is to use the maximum error or the final error in each N, dt configuration
@@ -220,7 +251,7 @@ def PlotMetric_vs_Dt(problem_folder, fixed_N, metric = "L2", stat = "max"): #max
 
     res = pd.DataFrame(row).sort_values("dt")
 
-    plt.figure()
+    plt.figure(figsize=(7,5))
     plt.plot(
         res["dt"],
         res["CN"],
@@ -246,7 +277,9 @@ def PlotMetric_vs_Dt(problem_folder, fixed_N, metric = "L2", stat = "max"): #max
     plt.legend()
     plt.grid()
 
-    plt.show()
+    SavePlot(problem_folder, "VsDt_in_problem", metric, f"{metric}_{stat}_vs_dt_N{fixed_N}")
+
+    plt.close()
 
 #Same as above, reverse (fixed dt changing N) . TODO: consider joining these two methods
 def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max or final
@@ -284,7 +317,7 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
 
     res = pd.DataFrame(row).sort_values("N")
 
-    plt.figure()
+    plt.figure(figsize=(7,5))
     plt.plot(
         res["N"],
         res["CN"],
@@ -310,7 +343,9 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
     plt.legend()
     plt.grid()
 
-    plt.show()
+    SavePlot(problem_folder, "VsN_in_each_problem", metric, f"{metric}_{stat}_vs_N_dt{fixed_dt}")
+
+    plt.close()
 
 def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
     row = []
@@ -343,7 +378,7 @@ def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
 
     res = pd.DataFrame(row)
 
-    plt.figure()
+    plt.figure(figsize=(7,5))
 
     cn = res[
         res["method"] == "CN"
@@ -378,13 +413,65 @@ def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
     plt.legend()
     plt.grid()
 
-    plt.show()
+    SavePlot(problem_folder, "runtime", metric, f"runtime_vs_{metric}_{stat}")
+
+    plt.close()
+
+
+def PlotAllGraphs(run_folder: Path):
+    metrics = ["L2", "norm_error", "energy_error", "delta_norm", "delta_energy"]
+    stats = ["max", "final"]
+
+    for problem_folder in run_folder.iterdir():
+        #Ignor Graphs folder
+        if problem_folder.name == "Graphs":
+            continue
+
+        print(f"\nPlotting: {problem_folder.name}")
+        setting_folders = []
+        N_values = set()
+        dt_values = set()
+
+        #Find all N/dt combinations
+        for setting_folder in problem_folder.iterdir():
+
+            match = re.fullmatch(r"N(\d+)_dt([0-9.eE+-]+)", setting_folder.name)
+            if match is None:
+                continue
+            N = int(match.group(1))
+            dt = float(match.group(2))
+            N_values.add(N)
+            dt_values.add(dt)
+
+            setting_folders.append(setting_folder)
+
+        #Metric vs time in each setting
+        for setting_folder in setting_folders:
+            for metric in metrics:
+                PlotMetric_vs_Time(setting_folder, metric = metric)
+
+        #Metric vs dt, fixed N in each problem
+        for N in sorted(N_values):
+            for metric in metrics:
+                for stat in stats:
+                    PlotMetric_vs_Dt(problem_folder, fixed_N = N, metric = metric, stat = stat)
+        #Metric vs N, fixed dt in each problem
+        for dt in sorted(dt_values):
+            for metric in metrics:
+                for stat in stats:
+                    PlotMetric_vs_N(problem_folder, fixed_dt = dt, metric = metric, stat = stat)
+
+        #Runtime vs metric in each problem
+        for metric in metrics:
+            for stat in stats:
+                PlotRuntime_vs_Metric(problem_folder, metric = metric, stat = stat)
 
 
 
-
+"""
 #Testingg
-run_folder = RESULTS_FOLDER / "run_2026-10-20_14-48-21"
+run_folder = GetLatestRun()
+print("Reading: ", run_folder.name)
 
 summary = AnalyzeRun(run_folder)
 
@@ -400,3 +487,14 @@ PlotRuntime_vs_Metric(
     metric="L2",
     stat="max"
 )
+"""
+
+run_folder = GetLatestRun()
+
+print("Reading:", run_folder.name)
+
+summary = AnalyzeRun(run_folder)
+
+print(summary)
+
+PlotAllGraphs(run_folder)

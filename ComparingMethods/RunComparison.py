@@ -155,5 +155,5 @@ for benchmark in benchmarks:
                 wave_func=wave,
                 potential=potential,
                 analytical=analytical,
-                mass=1.0, hbar=1.0 #TODO: Make these decleared constants in this script
+                mass=ELECTRON_MASS, hbar=HBAR 
             )
