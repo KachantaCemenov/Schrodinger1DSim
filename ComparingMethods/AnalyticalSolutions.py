@@ -60,7 +60,7 @@ def GaussianHarmonicAnalytical(grid, t, x0, k0, mass, omega, hbar):
     #initial momentum
     p0 = hbar * k0
     #width
-    sigma = np.sqrt(hbar / (2 * m * omega))
+    sigma = np.sqrt(hbar / (2 * mass * omega))
 
     #Classicle position and momentum
     x_center = x0 * np.cos(omega * t) + (p0 / (mass * omega)) * np.sin(omega * t)
@@ -71,4 +71,4 @@ def GaussianHarmonicAnalytical(grid, t, x0, k0, mass, omega, hbar):
 
     phase = np.exp(1j / hbar * (p_center * (x - x_center / 2) + p0 * x0/2) - 1j * omega * t/2)
 
-    return A * envelope * phase
+    return normalization_term * envelope * phase

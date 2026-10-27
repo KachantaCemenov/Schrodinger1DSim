@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 from scipy.constants import hbar, m_e, e
+import numpy as np
 
 from CompareMethods import RunComparison
 from grid import Grid1D
@@ -23,7 +24,7 @@ dt_values = [1e-17,       #0.01 fs
              ]
 """
 
-
+"""
 N_values = [500, 1000, 2000, 4000, 8000, 16000]
 dt_values = [8e-17,
              4e-17,
@@ -33,6 +34,18 @@ dt_values = [8e-17,
              3e-18,       #0.003 fs
              1e-18        #0.001 fs
              ]
+"""
+N_values = [500, 1000, 2000, 4000]
+
+dt_values = [
+    8e-17,
+    4e-17,
+    2e-17,
+    1e-17,
+    5e-18,
+    2.5e-18
+]
+
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -64,12 +77,7 @@ def GaussianFree(grid): #grid differs on each N
 
     wave = WaveFunction.GaussianPacket(grid=grid, x0=x0, sigma=sigma, k0=k0)
 
-    #potential = Potential.FreeParticle(grid) 
-    #Change to a barrier potential. Current energy E = hbar^2 * k^2 / 2m = about 0.15 eV
-    barrier_height = 0.2 * ELECTRON_CHARGE #0.2 eV
-    x_left = -1e-9
-    x_right = 1e-9
-    potential = Potential.Barrier(height = barrier_height, x_left = x_left, x_right = x_right)
+    potential = Potential.FreeParticle(grid) 
 
     #python closure to pass this function to CompareMethods
     def analytical(t):
@@ -96,7 +104,7 @@ def GaussianBarrier(grid):
     barrier_height = 0.2 * ELECTRON_CHARGE #0.2 eV
     x_left = -1e-9
     x_right = 1e-9
-    potential = Potential.Barrier(height = barrier_height, x_left = x_left, x_right = x_right)
+    potential = Potential.Barrier(grid, height = barrier_height, x_left = x_left, x_right = x_right)
 
     #python closure to pass this function to CompareMethods
     """         
@@ -121,6 +129,8 @@ def GaussianHarmonic(grid):
 
     def analytical(t):
         return GaussianHarmonicAnalytical(grid=grid, t=t, x0=x0, k0=k0, mass=mass, omega=omega, hbar=hbar)
+
+    return wave, potential, analytical
 
 def HarmonicOscillatorGroundState(grid):
     """
@@ -159,9 +169,7 @@ def PlaneWaveFree(grid):
 
     return wave, potential, analytical
 
-
-benchmarks = [
-    """
+""" Old config
     {
         "name": "Gaussian_Free",
         "function": GaussianFree,
@@ -169,7 +177,8 @@ benchmarks = [
         "x_max": 50e-9,
         "T_final": 100e-15
     }
-    """
+"""
+benchmarks = [
     {
         "name": "Gaussian_Harmonic",
         "function": GaussianHarmonic,

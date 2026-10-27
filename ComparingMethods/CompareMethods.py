@@ -72,8 +72,10 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
             ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
 
             #Write initial state
-            writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
-                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
+            writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
+                             wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
+                             wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                              cn_L2, ssf_L2])
 
             for step in range(steps):
@@ -88,8 +90,10 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                 ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
 
                 writer.writerow([
-                    step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
-                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential),
+                    step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
+                    wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
+                    wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                     cn_L2, ssf_L2
                 ])
 
@@ -123,7 +127,8 @@ def RunSolvers_AndWriteRuntime(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: 
 def L2Error(grid, numerical, analytical):
     diff = numerical - analytical 
 
-    L2err = np.sqrt(np.trapezoid(np.abs(diff)**2, grid.x))
+    #L2err = np.sqrt(np.trapezoid(np.abs(diff)**2, grid.x))
+    L2err = np.sqrt(grid.dx * np.sum(np.abs(diff)**2))
 
     return L2err
 
