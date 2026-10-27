@@ -25,6 +25,7 @@
     <Compile Include="CNTest.py" />
     <Compile Include="ComparingMethods\AnalyticalSolutions.py" />
     <Compile Include="ComparingMethods\CompareMethods.py" />
+    <Compile Include="ComparingMethods\MethodRecommendation.py" />
     <Compile Include="ComparingMethods\ReadData.py" />
     <Compile Include="ComparingMethods\RunComparison.py" />
     <Compile Include="DesktopUI\WaveFuncParser.py" />
