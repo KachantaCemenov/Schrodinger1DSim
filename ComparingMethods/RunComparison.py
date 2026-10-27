@@ -6,7 +6,8 @@ from CompareMethods import RunComparison
 from grid import Grid1D
 from wavefunction import WaveFunction
 from potential import Potential
-from AnalyticalSolutions import FreeGaussianAnalytical, HarmonicOscillatorEigenstateAnalytical, PlaneWaveAnalytical
+from AnalyticalSolutions import (FreeGaussianAnalytical, HarmonicOscillatorEigenstateAnalytical, 
+                                 PlaneWaveAnalytical, GaussianHarmonicAnalytical)
 
 
 HBAR = hbar
@@ -78,6 +79,7 @@ def GaussianFree(grid): #grid differs on each N
     return wave, potential, analytical
 
 #With Barrier as potential there is no analytical solution. Maybe do a high resolution numerical reference for this (SSF with extremely small N and dt?)
+#NOT WORKING, NO ANALYTICAL FUNCTION
 def GaussianBarrier(grid):
     mass = ELECTRON_MASS
     hbar = HBAR
@@ -97,12 +99,28 @@ def GaussianBarrier(grid):
     potential = Potential.Barrier(height = barrier_height, x_left = x_left, x_right = x_right)
 
     #python closure to pass this function to CompareMethods
-    """
-    def analytical(t):
+    """         
+    def analytical(t):                          
         return FreeGaussianAnalytical(grid=grid, t=t, x0=x0, sigma=sigma,
                                       k0=k0,mass=mass,hbar=hbar)
     """
     return wave, potential, analytical
+
+def GaussianHarmonic(grid):
+    
+    mass = ELECTRON_MASS
+    hbar = HBAR
+    omega = 1e15
+    #match the width with omega
+    sigma = np.sqrt(hbar / (2 * mass * omega)) #Coherent state, behaves like a classical harmonic oscillator
+    x0 = -2e-9    # 2nm to the left
+    k0 =  2e9
+
+    wave = WaveFunction.GaussianPacket(grid=grid, x0=x0, sigma=sigma, k0=k0)
+    potential = Potential.HarmonicOscillator(grid, mass=mass, omega=omega)
+
+    def analytical(t):
+        return GaussianHarmonicAnalytical(grid=grid, t=t, x0=x0, k0=k0, mass=mass, omega=omega, hbar=hbar)
 
 def HarmonicOscillatorGroundState(grid):
     """
@@ -143,11 +161,20 @@ def PlaneWaveFree(grid):
 
 
 benchmarks = [
+    """
     {
         "name": "Gaussian_Free",
         "function": GaussianFree,
         "x_min": -50e-9,
         "x_max": 50e-9,
+        "T_final": 100e-15
+    }
+    """
+    {
+        "name": "Gaussian_Harmonic",
+        "function": GaussianHarmonic,
+        "x_min": -5e-9,
+        "x_max": 5e-9,
         "T_final": 100e-15
     },
 

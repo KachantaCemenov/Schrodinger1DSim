@@ -48,3 +48,27 @@ def PlaneWaveAnalytical(initial_wave, grid, t, n, mass = 1.0, hbar = 1.0):
     propagator = np.exp(-1j * energy * t / hbar)
 
     return initial_wave.psi * propagator
+
+#https://arxiv.org/abs/quant-ph/9810036
+#TODO: Address this in the writeup
+def GaussianHarmonicAnalytical(grid, t, x0, k0, mass, omega, hbar):
+    #Assuming coherent state
+    # sigma = sqrt(hbar / (2*m*omega))
+
+    x = grid.x
+
+    #initial momentum
+    p0 = hbar * k0
+    #width
+    sigma = np.sqrt(hbar / (2 * m * omega))
+
+    #Classicle position and momentum
+    x_center = x0 * np.cos(omega * t) + (p0 / (mass * omega)) * np.sin(omega * t)
+    p_center = p0 * np.cos(omega * t) - mass * omega * x0 * np.sin(omega * t)
+
+    normalization_term = (1/(2 * np.pi * sigma**2))**0.25
+    envelope np.exp(-(x - x_center)**2 / (4 * sigma**2))
+
+    phase = np.exp(1j / hbar * (p_center * (x - x_center / 2) + p0 * x0/2) - 1j * omega * t/2)
+
+    return A * envelope * phase
