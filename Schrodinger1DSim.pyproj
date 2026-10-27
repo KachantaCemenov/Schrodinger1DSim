@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>66bef3ea-23c4-4d94-ad9b-ddd1949dbdaa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>ComparingMethods\MethodRecommendation.py</StartupFile>
+    <StartupFile>DesktopUI\main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -28,6 +28,9 @@
     <Compile Include="ComparingMethods\MethodRecommendation.py" />
     <Compile Include="ComparingMethods\ReadData.py" />
     <Compile Include="ComparingMethods\RunComparison.py" />
+    <Compile Include="DesktopUI\main.py" />
+    <Compile Include="DesktopUI\MainWindow.py" />
+    <Compile Include="DesktopUI\ParameterDefinition.py" />
     <Compile Include="DesktopUI\WaveFuncParser.py" />
     <Compile Include="potential.py" />
     <Compile Include="Solvers\cranknicolson.py" />
