@@ -11,9 +11,7 @@ WAVE_PARAMETERS = {
 
     "Harmonic Oscillator Eigenstate": {
         "n": int,
-        "mass": float,
-        "omega": float,
-        "hbar": float
+        "omega": float
     }
 }
 
@@ -22,7 +20,6 @@ POTENTIAL_PARAMETERS = {
     "Free Particle": {},
 
     "Harmonic Oscillator": {
-        "mass": float,
         "omega": float
     },
 
