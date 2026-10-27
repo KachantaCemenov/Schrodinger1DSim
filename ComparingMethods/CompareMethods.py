@@ -36,7 +36,8 @@ def RunComparison(setting_folder : Path,
     wave_cn = wave_func.Copy()  # Create a copy of the wave function for the CN solver
     wave_ssf = wave_func.Copy()  # Create a copy of the wave function for the SSF solver
 
-    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, grid = grid, wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, analytical = analytical,
+    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, grid = grid, mass = mass, hbar = hbar,
+                              wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, analytical = analytical,
                                 CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder)
 
     wave_cn = wave_func.Copy()  
@@ -48,7 +49,8 @@ def RunComparison(setting_folder : Path,
 
 
 
-def RunSolvers_AndWriteToFile(N, dt, T_final, grid, wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, analytical,
+def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
+                              wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, analytical,
                               CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver,
                 setting_folder):
 
@@ -70,8 +72,8 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, wave_cn: WaveFunction, wave_
             ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
 
             #Write initial state
-            writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential),
-                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential),
+            writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(), wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                             wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(), wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                              cn_L2, ssf_L2])
 
             for step in range(steps):

@@ -42,7 +42,7 @@ def PlaneWaveAnalytical(initial_wave, grid, t, n, mass = 1.0, hbar = 1.0):
     k = 2 * np.pi * n / L
 
     #E of free particle = p^2 / 2m = hbar^2*k^2 / 2m
-    #Planck relation p = hbar * k 
+    #de Broglie relation p = hbar * k 
     energy = (hbar**2 * k**2) / (2*mass)
     
     propagator = np.exp(-1j * energy * t / hbar)

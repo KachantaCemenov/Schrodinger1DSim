@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from scipy.constants import hbar, m_e
+from scipy.constants import hbar, m_e, e
 
 from CompareMethods import RunComparison
 from grid import Grid1D
@@ -11,11 +11,25 @@ from AnalyticalSolutions import FreeGaussianAnalytical, HarmonicOscillatorEigens
 
 HBAR = hbar
 ELECTRON_MASS = m_e
+ELECTRON_CHARGE = e
 
+"""
 N_values = [500, 1000, 2000]
 dt_values = [1e-17,       #0.01 fs
              5e-18,       #0.005 fs
              2.5e-18,     #0.0025 fs
+             1e-18        #0.001 fs
+             ]
+"""
+
+
+N_values = [500, 1000, 2000, 4000, 8000, 16000]
+dt_values = [8e-17,
+             4e-17,
+             2e-17,
+             1e-17,       #0.01 fs
+             6e-18,       #0.006 fs
+             3e-18,       #0.003 fs
              1e-18        #0.001 fs
              ]
 
@@ -49,13 +63,45 @@ def GaussianFree(grid): #grid differs on each N
 
     wave = WaveFunction.GaussianPacket(grid=grid, x0=x0, sigma=sigma, k0=k0)
 
-    potential = Potential.FreeParticle(grid)
+    #potential = Potential.FreeParticle(grid) 
+    #Change to a barrier potential. Current energy E = hbar^2 * k^2 / 2m = about 0.15 eV
+    barrier_height = 0.2 * ELECTRON_CHARGE #0.2 eV
+    x_left = -1e-9
+    x_right = 1e-9
+    potential = Potential.Barrier(height = barrier_height, x_left = x_left, x_right = x_right)
 
     #python closure to pass this function to CompareMethods
     def analytical(t):
         return FreeGaussianAnalytical(grid=grid, t=t, x0=x0, sigma=sigma,
                                       k0=k0,mass=mass,hbar=hbar)
 
+    return wave, potential, analytical
+
+#With Barrier as potential there is no analytical solution. Maybe do a high resolution numerical reference for this (SSF with extremely small N and dt?)
+def GaussianBarrier(grid):
+    mass = ELECTRON_MASS
+    hbar = HBAR
+
+    x0 = -20e-9    # 20nm to the left
+    sigma = 2e-9   #width 2nm
+    k0 =  2e9     #wavelength = 2pi/k0 = about 3nm here, in reasonable range for electron
+
+    #REMEMBER: v = hbar*k0 / m - use that to estimate where the particle end. Best not let it go near the boundary
+
+    wave = WaveFunction.GaussianPacket(grid=grid, x0=x0, sigma=sigma, k0=k0)
+
+    #E = hbar^2 * k^2 / 2m = about 0.15 eV
+    barrier_height = 0.2 * ELECTRON_CHARGE #0.2 eV
+    x_left = -1e-9
+    x_right = 1e-9
+    potential = Potential.Barrier(height = barrier_height, x_left = x_left, x_right = x_right)
+
+    #python closure to pass this function to CompareMethods
+    """
+    def analytical(t):
+        return FreeGaussianAnalytical(grid=grid, t=t, x0=x0, sigma=sigma,
+                                      k0=k0,mass=mass,hbar=hbar)
+    """
     return wave, potential, analytical
 
 def HarmonicOscillatorGroundState(grid):
