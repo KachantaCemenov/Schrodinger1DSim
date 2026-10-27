@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 import re
 import matplotlib.pyplot as plt
+import numpy as np
 
 BASE_FOLDER = Path(__file__).resolve().parent
 RESULTS_FOLDER = BASE_FOLDER / "Results"
@@ -347,6 +348,79 @@ def PlotMetric_vs_N(problem_folder, fixed_dt, metric = "L2", stat = "max"): #max
 
     plt.close()
 
+def PlotL2_LogLog_vs_Dt(problem_folder, fixed_N, stat = "max"):
+    summary = AnalyzeProblem(problem_folder)
+    error_col = f"{stat}_L2_error"
+    data = summary[summary["N"] == fixed_N].copy()
+
+    plt.figure(figsize=(7,5))
+
+    for method in ["CN", "SSF"]:
+        method_data = data[data["method"] == method].sort_values("dt")
+
+        dt = method_data["dt"].to_numpy()
+        error = method_data[error_col].to_numpy()
+
+        #Take out infinite and less than 0 values
+        mask = (np.isfinite(dt) & np.isfinite(error) & (dt > 0) & (error > 0) )
+        dt = dt[mask]
+        error = error[mask]
+
+        if len(dt) < 2: 
+            continue
+
+        slope = np.polyfit(np.log10(dt),np.log10(error), 1)[0]
+        plt.loglog(dt, error, marker="o", label = f"{method}: slope = {slope:.2f}")
+    plt.xlabel("dt (s)")
+    plt.ylabel(f"{stat.capitalize()} L2 Error")
+
+    plt.title(f"Temporal convergence\n {problem_folder.name}, N = {fixed_N}")
+
+    plt.legend()
+    plt.grid(True, which="both")
+
+    SavePlot(problem_folder,"LogLog","L2",f"L2_loglog_dt_N{fixed_N}")
+
+    plt.close()
+
+def PlotL2_LogLog_vs_Dx(problem_folder, fixed_dt, domain_length, stat = "max"):
+    summary = AnalyzeProblem(problem_folder)
+    error_col = f"{stat}_L2_error"
+    data = summary[np.isclose(summary["dt"], fixed_dt, rtol = 1e-10, atol = 0)].copy()
+
+    #dx = L / N
+    data["dx"] = domain_length / data["N"]
+
+    plt.figure(figsize = (7,5))
+
+    for method in ["CN", "SSF"]:
+        method_data = data[data["method"] == method].sort_values("dx")
+
+        dx = method_data["dx"].to_numpy()
+        error = method_data[error_col].to_numpy()
+
+        #Take out infinite and less than 0 values
+        mask = (np.isfinite(dx) & np.isfinite(error) & (dx > 0) & (error > 0) )
+        dx = dx[mask]
+        error = error[mask]
+
+        if len(dx) < 2: 
+            continue
+
+        slope = np.polyfit(np.log10(dx),np.log10(error), 1)[0]
+        plt.loglog(dx, error, marker="o", label = f"{method}: slope = {slope:.2f}")
+    plt.xlabel("dx (m)")
+    plt.ylabel(f"{stat.capitalize()} L2 error")
+
+    plt.title(f"Spatial convergence\n {problem_folder.name}, dt = {fixed_dt}")
+
+    plt.legend()
+    plt.grid(True, which="both")
+
+    SavePlot(problem_folder,"LogLog","L2",f"L2_loglog_dx_dt{fixed_dt}")
+
+    plt.close()
+
 def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
     row = []
 
@@ -498,3 +572,22 @@ summary = AnalyzeRun(run_folder)
 print(summary)
 
 PlotAllGraphs(run_folder)
+
+# Gaussian coherent state in harmonic potential
+gaussian = run_folder / "Gaussian_Harmonic"
+
+PlotL2_LogLog_vs_Dt(gaussian,fixed_N=4000)
+
+PlotL2_LogLog_vs_Dx(gaussian,
+                    fixed_dt=2.5e-18,
+                    domain_length=10e-9)
+
+
+# Harmonic oscillator ground state
+ho = run_folder / "HO_Ground"
+
+PlotL2_LogLog_vs_Dt(ho,fixed_N=4000)
+PlotL2_LogLog_vs_Dx(ho,
+                    fixed_dt=2.5e-18,
+                    domain_length=20e-9
+                    )
