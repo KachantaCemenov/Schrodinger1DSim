@@ -136,4 +136,49 @@ def _EvaluateNode(node, x):
         return ALLOWED_FUNCTIONS[function_name](*arguments)
 
 
-    raise ValueError("Expression contains unrecognized syntax")
+    raise ValueError("Unrecognized syntax(es) in expression")
+
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from grid import Grid1D
+
+    grid = Grid1D(
+        x_min=-10,
+        x_max=10,
+        num_points=1000
+    )
+
+    # Gaussian wave packet with momentum
+    expression = "sin(x)" #"exp(-(x+2)**2/(4*1**2)) * exp(1j*3*x)"
+
+    wave = ParseWaveFunction(expression, grid)
+
+    print("Norm:", wave.Norm())
+    print("Expected x:", wave.Expectation_x())
+    print("Wave function shape:", wave.psi.shape)
+
+    assert np.isclose(wave.Norm(), 1.0)
+    assert wave.psi.shape == grid.x.shape
+
+    plt.plot(grid.x, wave.ProbabilityDensity())
+    plt.xlabel("x")
+    plt.ylabel("|ψ(x)|²")
+    plt.title("Parsed Wave Function")
+    plt.grid()
+    plt.show()
+
+    # Test invalid iunput
+    invalid_expressions = [
+        "unknown_variable",
+        "eval('2+2')",
+        "0*x"
+    ]
+
+    for expr in invalid_expressions:
+        try:
+            ParseWaveFunction(expr, grid)
+            print("PASS:", expr)
+        except (ValueError, SyntaxError) as error:
+            print("FAIL:", expr, "-", error)
