@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import os
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -7,7 +8,7 @@ from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation
-from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration
+from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration, CONFIG_FILE
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -153,6 +154,8 @@ class MainWindow(tk.Tk):
         self.saved_config = tk.StringVar()
         self.config_dropdown = ttk.Combobox(frame, textvariable=self.saved_config, state="readonly")
         self.config_dropdown.grid(row=1, column=1, padx=5, pady = 3, sticky="ew")
+        #stick the open folder option to top
+        self.config_dropdown.bind("<<ComboboxSelected>>", self.OnConfigSelected)
         ttk.Button(frame, text="Load", command=self.OnLoadConfig).grid(row=1, column=2, padx=5)
 
         try: 
@@ -162,12 +165,28 @@ class MainWindow(tk.Tk):
 
     def RefreshConfigList(self, selected=None):
         names = sorted(ReadConfigurations(), key = str.casefold)
-        self.config_dropdown.configure(values = names)
+        self.config_dropdown.configure(values = ["Open configuration folder...", *names])
 
-        if selected in names:
-            self.saved_config.set(selected)
-        else:
-            self.saved_config.set(names[0] if names else "")
+        if selected not in names:
+            selected = names[0] if names else ""
+
+        self.last_selected_config = selected
+        self.saved_config.set(selected)
+
+    def OnConfigSelected(self, event = None):
+        #Save the current config selection when user select the open folder option
+        if self.config_dropdown.current() != 0:
+            self.last_selected_config = self.saved_config.get()
+            return
+
+        self.saved_config.set(self.last_selected_config)
+
+        try:
+            folder = CONFIG_FILE.parent
+            folder.mkdir(parents=True, exist_ok=True)
+            os.startfile(folder)
+        except (OSError) as e:
+            messagebox.showerror("Error Opening Configuration Folder", str(e), parent = self)
 
     def OnSaveConfig(self):
         name = self.config_name.get().strip()
