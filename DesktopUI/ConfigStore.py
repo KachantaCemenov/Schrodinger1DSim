@@ -4,7 +4,7 @@ from pathlib import Path
 
 from Simulation import SimulationConfig
 
-
+#Path.home() -> WindowsPath('C:/Users/Username')
 CONFIG_FILE = Path.home() / "Schrodinger1DSim" / "configurations.json"
 
 

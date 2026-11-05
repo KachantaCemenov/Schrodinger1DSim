@@ -537,8 +537,14 @@ class MainWindow(tk.Tk):
 
             self.current_results = res
             self.save_button.configure(state="normal")
+        
+        #Catch ValueError from Simulation so it doesn't crash
+        except ValueError as error:
+            messagebox.showerror("Invalid input", str(error), parent=self)
+
         except Exception as error:
             messagebox.showerror("Simulation Error", str(error))
+
         finally:
             self.run_button.configure(state="normal", text="Run Simulation")
 
