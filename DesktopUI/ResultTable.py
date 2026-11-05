@@ -11,6 +11,8 @@ class ResultTable(ttk.Frame):
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
 
         self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side="right", fill="y")
 
         self.tree.pack(
             side="left",
@@ -18,7 +20,6 @@ class ResultTable(ttk.Frame):
             expand=True
         )
 
-        scrollbar.pack(side="right", fill="y")
 
 
     def LoadDataFrame(self, dataframe):

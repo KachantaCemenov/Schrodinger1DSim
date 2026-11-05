@@ -465,14 +465,32 @@ class MainWindow(tk.Tk):
             index=False
         )
 
+    #For detecting empty and wrong entries then convert
+    def ReadEntry(self, entry, name, expected_type):
+        text = entry.get().strip()
+        if not text:
+            entry.focus_set()
+            raise ValueError(f"Entry for {name} is empty")
+
+        try: 
+            return expected_type(text)
+        except (ValueError, TypeError):
+            entry.focus_set()
+            entry.selection_range(0, "end")
+            kind = "an integer" if expected_type is int else "a number"
+            raise ValueError(f"{name} expected {kind}. You entered '{text}'") from None
+
     def BuildSimulationConfig(self):
-        mass = float(self.numerical_entries["mass"].get())
-        hbar = float(self.numerical_entries["hbar"].get())
-        x_min = float(self.numerical_entries["x_min"].get())
-        x_max = float(self.numerical_entries["x_max"].get())
-        N = int(self.numerical_entries["N"].get())
-        dt = float(self.numerical_entries["dt"].get())
-        T_final = float(self.numerical_entries["T_final"].get())
+        
+        entries = self.numerical_entries
+        mass = self.ReadEntry(entries["mass"], "mass", float)
+
+        hbar = self.ReadEntry(entries["hbar"], "hbar", float)
+        x_min = self.ReadEntry(entries["x_min"], "x_min", float)
+        x_max = self.ReadEntry(entries["x_max"], "x_max", float)
+        N = self.ReadEntry(entries["N"], "N", int)
+        dt = self.ReadEntry(entries["dt"], "dt", float)
+        T_final = self.ReadEntry(entries["T_final"], "T_final", float)
 
         wave_parameters = {}
 
@@ -484,7 +502,7 @@ class MainWindow(tk.Tk):
 
                 value = self.wave_entries[name].get()
 
-                wave_parameters[name] = (expected_type(value))
+                wave_parameters[name] = self.ReadEntry(self.wave_entries[name], f"Wave function / {name}", expected_type)
 
         potential_parameters = {}
 
@@ -494,7 +512,7 @@ class MainWindow(tk.Tk):
 
             value = self.potential_entries[name].get()
 
-            potential_parameters[name] = (expected_type(value))
+            potential_parameters[name] = self.ReadEntry(self.potential_entries[name], f"Potential / {name}", expected_type)
 
         return SimulationConfig(
                                 mass = mass,
