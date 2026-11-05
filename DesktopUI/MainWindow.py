@@ -7,6 +7,7 @@ from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation
+from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -125,11 +126,107 @@ class MainWindow(tk.Tk):
         )
         self.save_button.pack(side="bottom", pady=5)
 
+        self.CreateConfigSection(self.result_frame)
+
         self.result_table = ResultTable(self.result_frame)
         self.result_table.pack(fill="both", expand=True)
 
         self.wave_animation = WaveAnimation(animation_frame)
         self.wave_animation.pack(fill="both", expand=True)
+
+
+
+    #Methods for Saving Configurations
+    def CreateConfigSection(self, parent):
+        frame = ttk.LabelFrame(parent, text="Configuration Management")
+        frame.pack(side = "top", fill="x", pady = (0,5))
+        frame.columnconfigure(1, weight=1)
+
+        #Save configuration 
+        ttk.Label(frame, text="Configuration Name:").grid(row=0, column=0, padx=5, sticky="w")
+        self.config_name = tk.StringVar()
+        ttk.Entry(frame, textvariable = self.config_name).grid(row=0, column=1, padx=5, pady=3, sticky = "ew")
+        ttk.Button(frame, text="Save", command=self.OnSaveConfig).grid(row=0, column=2, padx=5)
+
+        #Load configuration
+        ttk.Label(frame, text = "Saved: ").grid(row=1, column=0, padx=5, sticky="w")
+        self.saved_config = tk.StringVar()
+        self.config_dropdown = ttk.Combobox(frame, textvariable=self.saved_config, state="readonly")
+        self.config_dropdown.grid(row=1, column=1, padx=5, pady = 3, sticky="ew")
+        ttk.Button(frame, text="Load", command=self.OnLoadConfig).grid(row=1, column=2, padx=5)
+
+        try: 
+            self.RefreshConfigList()
+        except (OSError, ValueError) as e:
+            messagebox.showerror("Cannot read configurations", str(e))
+
+    def RefreshConfigList(self, selected=None):
+        names = sorted(ReadConfigurations(), key = str.casefold)
+        self.config_dropdown.configure(values = names)
+
+        if selected in names:
+            self.saved_config.set(selected)
+        else:
+            self.saved_config.set(names[0] if names else "")
+
+    def OnSaveConfig(self):
+        name = self.config_name.get().strip()
+        if not name:
+            messagebox.showerror("Invalid Name", "Configuration name cannot be empty.")
+            return
+        try:
+            config = self.BuildSimulationConfig()
+            if name in ReadConfigurations():
+                if not messagebox.askyesno("Overwrite Confirmation", f"Configuration '{name}' already exists. Overwrite?"):
+                    return
+
+            SaveConfiguration(name, config)
+            self.RefreshConfigList(selected = name)
+        except (OSError, ValueError, KeyError) as e:
+            messagebox.showerror("Error Saving Configuration", str(e))
+
+    def OnLoadConfig(self):
+        name = self.saved_config.get()
+        if not name:
+            messagebox.showerror("No Configuration Selected", "Please select a configuration to load.")
+            return
+
+        try:
+            config = LoadConfiguration(name)
+            self.ApplySimulationConfig(config)
+            self.config_name.set(name)
+        except (OSError, ValueError, KeyError) as e:
+            messagebox.showerror("Error Loading Configuration", str(e))
+
+    def ApplySimulationConfig(self, config):
+        def fill(entry, value):
+            entry.delete(0, tk.END)
+            entry.insert(0, str(value))
+
+        #Apply the values
+        for name, entry in self.numerical_entries.items():
+            fill(entry, getattr(config, name))
+
+        self.solver_type.set(config.solver)
+
+        self.wave_input_mode.set(config.wave_mode)
+        self.OnWaveInputModeChanged()
+
+        if config.wave_mode == "Preset":
+            self.wave_type.set(config.wave_type)
+            self.OnWaveSelected()
+
+            for name, entry in self.wave_entries.items():
+                fill(entry, config.wave_parameters[name])
+        else:
+            fill(self.wave_expression_entry, config.wave_expression or "")
+
+        self.potential_type.set(config.potential_type)
+        self.OnPotentialSelected()
+
+        for name, entry in self.potential_entries.items():
+            fill(entry, config.potential_parameters[name])
+
 
 
     def CreateWaveSection(self):

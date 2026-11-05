@@ -94,8 +94,8 @@ def RunSimulation(config):
         raise ValueError("All input values must be finite.")
     if config.N < 3 or config.x_max <= config.x_min:
         raise ValueError("Use N >= 3 and x_max > x_min.")
-    if min(config.mass, config.hbar, config.T_final) <= 0:
-        raise ValueError("Mass, reduced Planck constant, and final time must be positive.")
+    if min(config.mass, config.hbar, config.dt, config.T_final) <= 0:
+        raise ValueError("Mass, reduced Planck constant, time step, and final time must be positive.")
 
     ratio = config.T_final / config.dt
     num_steps = round(ratio)
