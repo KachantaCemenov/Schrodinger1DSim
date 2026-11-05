@@ -289,11 +289,7 @@ class MainWindow(tk.Tk):
             state="readonly"
         )
 
-        self.wave_dropdown.pack(
-            fill="x",
-            padx=5,
-            pady=5
-        )
+        self.wave_dropdown.pack(fill="x",padx=5,pady=5)
 
         self.wave_parameter_frame = ttk.Frame(self.wave_preset_frame)
         self.wave_parameter_frame.pack(fill="x")
@@ -307,18 +303,11 @@ class MainWindow(tk.Tk):
         #Make expression frame
         self.wave_expression_frame = ttk.Frame(self.wave_frame)
 
-        ttk.Label(
-            self.wave_expression_frame,
-            text="ψ(x,0) ="
-        ).pack(anchor="w")
+        ttk.Label(self.wave_expression_frame,text="ψ(x,0) =").pack(anchor="w")
 
         self.wave_expression_entry = ttk.Entry(self.wave_expression_frame)
 
-        self.wave_expression_entry.pack(
-            fill="x",
-            padx=5,
-            pady=5
-        )
+        self.wave_expression_entry.pack(fill="x",padx=5,pady=5)
     def OnWaveInputModeChanged(self):
 
         mode = self.wave_input_mode.get()
@@ -350,27 +339,15 @@ class MainWindow(tk.Tk):
 
             row = ttk.Frame(self.wave_parameter_frame)
 
-            row.pack(
-                fill="x",
-                padx=5,
-                pady=2
-            )
+            row.pack(fill="x",padx=5,pady=2)
 
-            label = ttk.Label(
-                row,
-                text=f"{name}:",
-                width=12
-            )
+            label = ttk.Label(row,text=f"{name}:",width=12)
 
             label.pack(side="left")
 
             entry = ttk.Entry(row)
 
-            entry.pack(
-                side="left",
-                fill="x",
-                expand=True
-            )
+            entry.pack(side="left",fill="x",expand=True)
 
             self.wave_entries[name] = entry
 
@@ -388,11 +365,7 @@ class MainWindow(tk.Tk):
             state="readonly"
         )
 
-        dropdown.pack(
-            fill="x",
-            padx=5,
-            pady=5
-        )
+        dropdown.pack(fill="x",padx=5,pady=5)
 
         self.potential_parameter_frame = (ttk.Frame(self.potential_frame))
 
@@ -420,29 +393,15 @@ class MainWindow(tk.Tk):
 
             row = ttk.Frame(self.potential_parameter_frame)
 
-            row.pack(
-                fill="x",
-                padx=5,
-                pady=2
-            )
+            row.pack(fill="x",padx=5,pady=2)
 
-            ttk.Label(
-                row,
-                text=f"{name}:",
-                width=12
-            ).pack(side="left")
+            ttk.Label(row,text=f"{name}:",width=12).pack(side="left")
 
             entry = ttk.Entry(row)
 
-            entry.pack(
-                side="left",
-                fill="x",
-                expand=True
-            )
+            entry.pack(side="left",fill="x",expand=True)
 
-            self.potential_entries[
-                name
-            ] = entry
+            self.potential_entries[name] = entry
 
     def CreateNumericalSection(self):
 
@@ -465,44 +424,22 @@ class MainWindow(tk.Tk):
 
             row = ttk.Frame(frame)
 
-            row.pack(
-                fill="x",
-                padx=5,
-                pady=2
-            )
+            row.pack(fill="x",padx=5,pady=2)
 
-            ttk.Label(
-                row,
-                text=f"{name}:",
-                width=12
-            ).pack(side="left")
+            ttk.Label(row,text=f"{name}:",width=12).pack(side="left")
 
             entry = ttk.Entry(row)
 
-            entry.pack(
-                side="left",
-                fill="x",
-                expand=True
-            )
+            entry.pack(side="left",fill="x",expand=True)
 
-            self.numerical_entries[
-                name
-            ] = entry
+            self.numerical_entries[name] = entry
 
         #Solver choice
         solver_row = ttk.Frame(frame)
 
-        solver_row.pack(
-            fill="x",
-            padx=5,
-            pady=5
-        )
+        solver_row.pack(fill="x",padx=5,pady=5)
 
-        ttk.Label(
-            solver_row,
-            text="Solver:",
-            width=12
-        ).pack(side="left")
+        ttk.Label(solver_row,text="Solver:",width=12).pack(side="left")
 
         self.solver_type = tk.StringVar(value="SSF")
         #Drop down list for Solver
@@ -513,18 +450,10 @@ class MainWindow(tk.Tk):
             state="readonly"
         )
 
-        solver_dropdown.pack(
-            side="left",
-            fill="x",
-            expand=True
-        )
+        solver_dropdown.pack(side="left",fill="x",expand=True)
 
         #Run button
-        self.run_button = ttk.Button(
-            frame,
-            text="Run Simulation",
-            command=self.OnRunSimulation
-        )
+        self.run_button = ttk.Button(frame,text="Run Simulation",command=self.OnRunSimulation)
 
         self.run_button.pack(pady=10)
 
@@ -572,20 +501,12 @@ class MainWindow(tk.Tk):
         if self.current_results is None:
             return
 
-        path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[
-                ("CSV files", "*.csv")
-            ]
-        )
+        path = filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV files", "*.csv")])
 
         if not path:
             return
 
-        self.current_results.to_csv(
-            path,
-            index=False
-        )
+        self.current_results.to_csv(path,index=False)
 
     #For detecting empty and wrong entries then convert
     def ReadEntry(self, entry, name, expected_type):
