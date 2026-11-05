@@ -5,6 +5,8 @@ from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
 from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
+from concurrent.futures import ThreadPoolExecutor
+from Simulation import SimulationConfig, RunSimulation
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -33,9 +35,19 @@ class MainWindow(tk.Tk):
 
         self.CreateSimulationTab()
 
-    #Animation testing
+        """
+        #Animation testing
+        import numpy as np
 
+        x = np.linspace(-10, 10, 4000)
+        times = np.linspace(0, 1e-15, 100, endpoint = False)
 
+        centers = 3 * np.sin(2 * np.pi * times / 1e-15)
+
+        densities = np.exp(-((x[None, :] - centers[:, None]) ** 2) / (2 * 0.5 ** 2))
+
+        self.wave_animation.LoadData(x, times, densities)
+        """
     """
     def CreateSimulationTab(self):
 
@@ -392,40 +404,46 @@ class MainWindow(tk.Tk):
         )
 
         #Run button
-        run_button = ttk.Button(
+        self.run_button = ttk.Button(
             frame,
             text="Run Simulation",
             command=self.OnRunSimulation
         )
 
-        run_button.pack(pady=10)
+        self.run_button.pack(pady=10)
 
     def OnRunSimulation(self):
-        """
-        print("Wave mode:", self.wave_input_mode.get())
-        print("Wave:", self.wave_type.get())
-        print("Potential:", self.potential_type.get())
-        print("Solver:", self.solver_type.get())
-
-        print("Wave parameters:")
-        for name, entry in self.wave_entries.items():
-            print(name, entry.get())
-
-        print("Potential parameters:")
-        for name, entry in self.potential_entries.items():
-            print(name, entry.get())
-
-        print("Numerical:")
-        for name, entry in self.numerical_entries.items():
-            print(name, entry.get())
-        """
         try:
             config = self.BuildSimulationConfig()
 
         except (ValueError, KeyError) as error:
             messagebox.showerror("Invalid Input",str(error))
             return
-        print(config)
+        
+        self.run_button.configure(state="disabled", text="Running...")
+
+        #Run in a thread to not freezing the GUI 
+        worker = ThreadPoolExecutor(max_workers=1)
+        future = worker.submit(RunSimulation, config)
+        worker.shutdown(wait=False)
+
+        self.after(50, self.FinishSimulation, future)
+
+    def FinishSimulation(self, future):
+        if not future.done():
+            self.after(50, self.FinishSimulation, future)
+            return
+        try:
+            res, x, times, densities = future.result()
+            self.wave_animation.LoadData(x, times, densities)
+            self.result_table.LoadDataFrame(res)
+
+            self.current_results = res
+            self.save_button.configure(state="normal")
+        except Exception as error:
+            messagebox.showerror("Simulation Error", str(error))
+        finally:
+            self.run_button.configure(state="normal", text="Run Simulation")
 
     def OnSaveResults(self):
 
