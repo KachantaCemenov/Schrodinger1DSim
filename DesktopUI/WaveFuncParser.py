@@ -118,7 +118,7 @@ def _EvaluateNode(node, x):
         raise ValueError("Unary operator not allowed")
 
 
-    # Functions: exp(...), sin(...), etc
+    # Functions: exp, sin etc
     if isinstance(node, ast.Call):
 
         if not isinstance(node.func, ast.Name):
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     )
 
     # Gaussian wave packet with momentum
-    expression = "sin(x)" #"exp(-(x+2)**2/(4*1**2)) * exp(1j*3*x)"
+    expression = "exp(-(x+2)**2/(4*1**2))" #"sin(x)"
 
     wave = ParseWaveFunction(expression, grid)
 

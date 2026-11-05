@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>66bef3ea-23c4-4d94-ad9b-ddd1949dbdaa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>DesktopUI\WaveFuncParser.py</StartupFile>
+    <StartupFile>DesktopUI\main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -33,6 +33,7 @@
     <Compile Include="DesktopUI\ParameterDefinition.py" />
     <Compile Include="DesktopUI\ResultTable.py" />
     <Compile Include="DesktopUI\Simulation.py" />
+    <Compile Include="DesktopUI\WaveAnimation.py" />
     <Compile Include="DesktopUI\WaveFuncParser.py" />
     <Compile Include="potential.py" />
     <Compile Include="Solvers\cranknicolson.py" />

@@ -4,6 +4,7 @@ from tkinter import ttk, filedialog, messagebox
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
 from Simulation import SimulationConfig
+from WaveAnimation import WaveAnimation
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -11,7 +12,7 @@ class MainWindow(tk.Tk):
 
         self.title("1D Schrodinger Equation Simulator")
 
-        self.geometry("1100x700")
+        self.geometry("1100x950")
         self.current_results = None
 
         self.CreateTabs()
@@ -32,6 +33,10 @@ class MainWindow(tk.Tk):
 
         self.CreateSimulationTab()
 
+    #Animation testing
+
+
+    """
     def CreateSimulationTab(self):
 
         self.input_frame = ttk.Frame(self.simulation_tab)
@@ -71,6 +76,48 @@ class MainWindow(tk.Tk):
         )
 
         self.save_button.pack(pady=5)
+
+    """
+    def CreateSimulationTab(self):
+
+        self.simulation_panes = ttk.Panedwindow(self.simulation_tab, orient="vertical")
+        self.simulation_panes.pack(fill="both", expand=True)
+
+        top_frame = ttk.Frame(self.simulation_panes)
+
+        animation_frame = ttk.LabelFrame(self.simulation_panes, text="Probability Distribution")
+
+        self.simulation_panes.add(top_frame, weight=3)
+        self.simulation_panes.add(animation_frame, weight=2)
+
+        top_frame.columnconfigure(0, weight=1)
+        top_frame.columnconfigure(1, weight=2)
+        top_frame.rowconfigure(0, weight=1)
+
+        self.input_frame = ttk.Frame(top_frame)
+        self.input_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+        self.result_frame = ttk.Frame(top_frame)
+        self.result_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+        self.CreateWaveSection()
+        self.CreatePotentialSection()
+        self.CreateNumericalSection()
+
+        # Pack the button first to reserve space below the table.
+        self.save_button = ttk.Button(
+            self.result_frame,
+            text="Save Results",
+            command=self.OnSaveResults,
+            state="disabled"
+        )
+        self.save_button.pack(side="bottom", pady=5)
+
+        self.result_table = ResultTable(self.result_frame)
+        self.result_table.pack(fill="both", expand=True)
+
+        self.wave_animation = WaveAnimation(animation_frame)
+        self.wave_animation.pack(fill="both", expand=True)
 
 
     def CreateWaveSection(self):
