@@ -137,7 +137,7 @@ class MainWindow(tk.Tk):
 
 
 
-    #Methods for Saving Configurations
+    #Methods for Saving Configurations ---------------------------------------------------------
     def CreateConfigSection(self, parent):
         frame = ttk.LabelFrame(parent, text="Configuration Management")
         frame.pack(side = "top", fill="x", pady = (0,5))

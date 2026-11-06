@@ -82,6 +82,12 @@ def BuildPotential(config, grid):
     raise ValueError(f"Unknown potential type: {config.potential_type}")
 
 
+#Getting error when N or T_final / dt is too large, linspace failed.
+#These constraints are arbitrary for now
+MAX_STEPS = 100_000
+MAX_GRID_POINTS = 20_000
+
+
 def RunSimulation(config):
     #Displayed values
     values = [
@@ -89,15 +95,20 @@ def RunSimulation(config):
             config.dt, config.T_final,
             *config.wave_parameters.values(), *config.potential_parameters.values()
         ]
-
+    if not 3 <= config.N <= MAX_GRID_POINTS:
+        raise ValueError(f"Number of grid points N must be between 3 and {MAX_GRID_POINTS}.")
     if not np.all(np.isfinite(values)):
         raise ValueError("All input values must be finite.")
-    if config.N < 3 or config.x_max <= config.x_min:
-        raise ValueError("Use N >= 3 and x_max > x_min.")
+    if config.x_max <= config.x_min:
+        raise ValueError("Use x_max > x_min.")
     if min(config.mass, config.hbar, config.dt, config.T_final) <= 0:
         raise ValueError("Mass, reduced Planck constant, time step, and final time must be positive.")
 
     ratio = config.T_final / config.dt
+
+    if not np.isfinite(ratio) or ratio > MAX_STEPS:
+        raise ValueError(f"This run exceed the limit of {MAX_STEPS} time steps. Please reduce T_final or increase dt.")
+
     num_steps = round(ratio)
     if num_steps <= 0 or abs(ratio - num_steps) > 1e-10:
         raise ValueError("Final time must be an integer multiple of the time step.")
