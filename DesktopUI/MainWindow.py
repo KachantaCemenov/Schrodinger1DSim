@@ -150,7 +150,7 @@ class MainWindow(tk.Tk):
         ttk.Button(frame, text="Save", command=self.OnSaveConfig).grid(row=0, column=2, padx=5)
 
         #Load configuration
-        ttk.Label(frame, text = "Saved: ").grid(row=1, column=0, padx=5, sticky="w")
+        ttk.Label(frame, text = "Saved Configurations: ").grid(row=1, column=0, padx=5, sticky="w")
         self.saved_config = tk.StringVar()
         self.config_dropdown = ttk.Combobox(frame, textvariable=self.saved_config, state="readonly")
         self.config_dropdown.grid(row=1, column=1, padx=5, pady = 3, sticky="ew")
@@ -388,6 +388,11 @@ class MainWindow(tk.Tk):
         parameters = (POTENTIAL_PARAMETERS[selected])
 
         self.potential_entries = {}
+
+        if not parameters:
+            self.potential_parameter_frame.pack_forget()
+            return
+        self.potential_parameter_frame.pack(fill="x")
 
         for name in parameters:
 
