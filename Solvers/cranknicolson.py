@@ -73,6 +73,6 @@ class CrankNicolsonSolver:
         if self.periodic:
             new_psi = psi_new_inside
         else:
-            new_psi = psi_new_inside[1:-1]  # Exclude boundary points]
+            new_psi[1:-1] = psi_new_inside  # Exclude boundary points]
 
         wave.psi = new_psi

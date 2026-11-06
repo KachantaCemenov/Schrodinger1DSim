@@ -50,17 +50,17 @@ class Potential:
 
         return cls(grid, values)
 
+    
     @classmethod
     def InfiniteSquareWell(cls, grid, x_left, x_right):
         #Infinite square well with customizable boundaries
+        if not (grid.x_min < x_left < x_right < grid.x_max):
+            raise ValueError("Use x_min < x_left < x_right < x_max.")
 
-        values = np.zeros_like(grid.x)
+        values = np.full_like(grid.x, np.inf, dtype = float)
 
-        well = (
-            (grid.x >= x_left) & 
-            (grid.x <= x_right)
-        )
-
-        values[well] = float('inf')
+        well = (grid.x >= x_left) & (grid.x <= x_right)
+        values[well] = 0.0
 
         return cls(grid, values)
+    

@@ -27,5 +27,10 @@ POTENTIAL_PARAMETERS = {
         "height": float,
         "x_left": float,
         "x_right": float
+    },
+
+    "Infinite Square Well": {
+        "x_left": float,
+        "x_right": float
     }
 }
