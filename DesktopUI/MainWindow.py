@@ -190,11 +190,61 @@ class MainWindow(tk.Tk):
             entry.grid(row=row, column=1, sticky="ew", pady=2)
             self.benchmark_numerical_entries[name] = entry
         
-        #Bottom: show after user click save
+        #Make new self fields here cus self.wave_type depends on entry in simulation tab
+        self.benchmark_wave_type, self.benchmark_wave_entries = ( 
+            self.CreateBenchmarkPresetSection("Wave Function", WAVE_PARAMETERS, row = 4))
+        self.benchmark_potential_type, self.benchmark_potential_entries = ( 
+            self.CreateBenchmarkPresetSection("Potential", POTENTIAL_PARAMETERS, row = 5))
+
+
+
+        #Bottom: table and graph show after user click save
 
         self.benchmark_results_frame = ttk.LabelFrame(tab, text="Benchmark Results", padding=8)
         self.benchmark_results_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
         self.benchmark_results_frame.grid_remove()
+
+    #Methods for Benchmark Tab -----------------------------------------
+    def CreateBenchmarkPresetSection(self, title, definitions, row):
+        frame = ttk.LabelFrame(self.benchmark_config_frame, text=title, padding= 6)
+        frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10,0))
+        frame.columnconfigure(0, weight = 1)
+
+        selected = tk.StringVar(master=frame, value=next(iter(definitions))) #Get a random one
+        dropdown = ttk.Combobox(frame, textvariable=selected, values= list(definitions), state="readonly")
+        dropdown.grid(row=0, column=0, sticky="ew")
+
+        fields = ttk.Frame(frame)
+        fields.grid(row=1, column=0, sticky="ew")
+        fields.columnconfigure(1, weight=1)
+        entries = {}
+
+        def ShowParameters(event=None):
+            for widget in fields.winfo_children():
+                widget.destroy()
+            entries.clear()
+
+            parameters = definitions[selected.get()]
+
+            #Collapse frame if no parameters
+            if not parameters:
+                fields.grid_remove()
+                return
+            fields.grid()
+
+            for index, name in enumerate(definitions[selected.get()]):
+                ttk.Label(fields, text=name).grid(row=index, column=0, sticky="w", padx=(0,8), pady=2)
+                entry = ttk.Entry(fields)
+                entry.grid(row=index, column=1, sticky="ew", pady=2)
+                entries[name] = entry
+
+        dropdown.bind("<<ComboboxSelected>>", ShowParameters)
+        ShowParameters()
+        return selected, entries
+
+
+
+
 
 
 
