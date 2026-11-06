@@ -1,13 +1,14 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
+import math
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
 from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
-from Simulation import SimulationConfig, RunSimulation
+from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS
 from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration, CONFIG_FILE
 
 class MainWindow(tk.Tk):
@@ -196,6 +197,9 @@ class MainWindow(tk.Tk):
         self.benchmark_potential_type, self.benchmark_potential_entries = ( 
             self.CreateBenchmarkPresetSection("Potential", POTENTIAL_PARAMETERS, row = 5))
 
+        ttk.Button(self.benchmark_config_frame, text="Preview sweep",
+                   command=self.PreviewBenchmarkSweep).grid(row=6, columnspan=2, sticky="ew", pady=(10,0))
+
 
 
         #Bottom: table and graph show after user click save
@@ -205,6 +209,56 @@ class MainWindow(tk.Tk):
         self.benchmark_results_frame.grid_remove()
 
     #Methods for Benchmark Tab -----------------------------------------
+
+    def ReadBenchmarkSweep(self):
+
+        #method for reading the strings of N and dt
+        def parse_list(text, label, convert):
+            values = []
+            seen = set()
+
+            for pos, item in enumerate(text.split(","), start = 1):
+                item = item.strip()
+                if not item:
+                    raise ValueError(f"{label}: value at position {pos} is empty.\nDo not leave comma at the end.")
+                try:
+                    value = convert(item)
+                except ValueError:
+                    kind = "an integer" if convert is int else "a number"
+                    #Remember to start adding 'from None'
+                    raise ValueError(f"{label}: expected {kind} as position {pos}, got {item!r}") from None
+
+                if value in seen:
+                    raise ValueError(f"{label}: {item} appears more than once.")
+                seen.add(value)
+                values.append(value)
+            return values
+
+        n_values = parse_list(self.benchmark_n_values.get(), "N", int)
+        dt_values = parse_list(self.benchmark_dt_values.get(), "dt", float)
+
+        for n in n_values:
+            if not 3 <= n <= MAX_GRID_POINTS:
+                raise ValueError(f"N must be between 3 and {MAX_GRID_POINTS}. Got {n} among them.")
+        return n_values, dt_values
+
+    def PreviewBenchmarkSweep(self):
+        try:
+            n_values, dt_values = self.ReadBenchmarkSweep()
+        except ValueError as e:
+            messagebox.showerror("Invalid benchmark sweep: ", str(e), parent=self) #remember to add parent=self else it spawn new window on taskbar
+            return
+        
+        count = len(n_values) * len(dt_values)
+        console = self.benchmark_console
+        console.configure(state="normal")
+        console.insert("end",f"Sweep: {len(n_values)} N values x {len(dt_values)} dt values = {count} combinations.\n")
+        console.see("end") #scroll down to "end" (tk.END)
+        console.configure(state="disabled")
+        
+
+
+
     def CreateBenchmarkPresetSection(self, title, definitions, row):
         frame = ttk.LabelFrame(self.benchmark_config_frame, text=title, padding= 6)
         frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10,0))
