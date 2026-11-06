@@ -49,3 +49,18 @@ class Potential:
         values[wall] = height
 
         return cls(grid, values)
+
+    @classmethod
+    def InfiniteSquareWell(cls, grid, x_left, x_right):
+        #Infinite square well with customizable boundaries
+
+        values = np.zeros_like(grid.x)
+
+        well = (
+            (grid.x >= x_left) & 
+            (grid.x <= x_right)
+        )
+
+        values[well] = float('inf')
+
+        return cls(grid, values)

@@ -14,11 +14,7 @@ class ResultTable(ttk.Frame):
         
         scrollbar.pack(side="right", fill="y")
 
-        self.tree.pack(
-            side="left",
-            fill="both",
-            expand=True
-        )
+        self.tree.pack(side="left",fill="both",expand=True)
 
 
 
@@ -33,20 +29,10 @@ class ResultTable(ttk.Frame):
 
         for column in columns:
 
-            self.tree.heading(
-                column,
-                text=column
-            )
+            self.tree.heading(column,text=column)
 
-            self.tree.column(
-                column,
-                width=110
-            )
+            self.tree.column(column,width=110)
 
         for _, row in dataframe.iterrows():
 
-            self.tree.insert(
-                "",
-                "end",
-                values=list(row)
-            )
+            self.tree.insert("","end",values=list(row))
