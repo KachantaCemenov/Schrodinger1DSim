@@ -8,7 +8,7 @@ from ResultTable import ResultTable
 from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
-from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS
+from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration, CONFIG_FILE
 
 class MainWindow(tk.Tk):
@@ -137,6 +137,7 @@ class MainWindow(tk.Tk):
 
         self.wave_animation = WaveAnimation(animation_frame)
         self.wave_animation.pack(fill="both", expand=True)
+
     def CreateBenchmarkTab(self):
         tab = self.benchmark_tab
         tab.columnconfigure(0, weight=1)
@@ -237,14 +238,42 @@ class MainWindow(tk.Tk):
         n_values = parse_list(self.benchmark_n_values.get(), "N", int)
         dt_values = parse_list(self.benchmark_dt_values.get(), "dt", float)
 
+        #Check the parsed N and dt 
         for n in n_values:
             if not 3 <= n <= MAX_GRID_POINTS:
                 raise ValueError(f"N must be between 3 and {MAX_GRID_POINTS}. Got {n} among them.")
+        for dt in dt_values:
+            if not math.isfinite(dt) or dt <= 0: #Use math not np cus dt is scalar
+                raise ValueError(f"dt must be finite and positive. Got {dt}.")
+
         return n_values, dt_values
+
+    def BenchmarkStepCheck(self, T, dt):
+        if not math.isfinite(T) or T <= 0:
+            raise ValueError("T_final must be finite and positive.")
+        ratio = T / dt
+        if not math.isfinite(ratio) or ratio > MAX_STEPS:
+            #:g is useful, it drop trailing zeroes
+            raise ValueError(f"dt = {dt:g} exceeds the limit of {MAX_STEPS} steps.\nPlease reduce T_final or increase dt.") 
+        
+        steps = round(ratio)
+        if steps < 1 or abs(ratio - steps) > 1e-10:
+            raise ValueError(f"T_final must be whole number of steps for dt = {dt:g}.")
+        return steps
+
+
 
     def PreviewBenchmarkSweep(self):
         try:
             n_values, dt_values = self.ReadBenchmarkSweep()
+            step_lines = []
+            T_entry = self.benchmark_numerical_entries["T_final"]
+            if T_entry.get().strip():
+                T = self.ReadEntry(T_entry, "T_final", float)
+                for dt in dt_values:
+                    steps = self.BenchmarkStepCheck(T, dt)
+                    step_lines.append(f"dt = {dt:g}: {steps} steps per solver\n")
+
         except ValueError as e:
             messagebox.showerror("Invalid benchmark sweep: ", str(e), parent=self) #remember to add parent=self else it spawn new window on taskbar
             return
@@ -253,6 +282,7 @@ class MainWindow(tk.Tk):
         console = self.benchmark_console
         console.configure(state="normal")
         console.insert("end",f"Sweep: {len(n_values)} N values x {len(dt_values)} dt values = {count} combinations.\n")
+        console.insert("end", "".join(step_lines))
         console.see("end") #scroll down to "end" (tk.END)
         console.configure(state="disabled")
         

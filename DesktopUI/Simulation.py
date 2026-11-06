@@ -120,7 +120,7 @@ def RunSimulation(config):
     ratio = config.T_final / config.dt
 
     if not np.isfinite(ratio) or ratio > MAX_STEPS:
-        raise ValueError(f"This run exceed the limit of {MAX_STEPS} time steps. Please reduce T_final or increase dt.")
+        raise ValueError(f"This run exceed the limit of {MAX_STEPS} time steps.\nPlease reduce T_final or increase dt.")
 
     num_steps = round(ratio)
     if num_steps <= 0 or abs(ratio - num_steps) > 1e-10:
