@@ -36,6 +36,7 @@ class MainWindow(tk.Tk):
         self.notebook.pack(expand = True, fill = "both")
 
         self.CreateSimulationTab()
+        self.CreateBenchmarkTab()
 
         """
         #Animation testing
@@ -92,6 +93,7 @@ class MainWindow(tk.Tk):
         self.save_button.pack(pady=5)
 
     """
+    #Methods for creating the main tabs of the window (IMPORTANT) ----------------------
     def CreateSimulationTab(self):
 
         self.simulation_panes = ttk.Panedwindow(self.simulation_tab, orient="vertical")
@@ -134,6 +136,65 @@ class MainWindow(tk.Tk):
 
         self.wave_animation = WaveAnimation(animation_frame)
         self.wave_animation.pack(fill="both", expand=True)
+    def CreateBenchmarkTab(self):
+        tab = self.benchmark_tab
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+
+        top = ttk.Frame(tab, padding=10)
+        top.grid(row=0, column=0, sticky="nsew")
+        top.columnconfigure(1, weight=1)
+        top.rowconfigure(0, weight=1)
+
+        #Right: console for messages
+        console_frame = ttk.LabelFrame(top, text="Benchmark Console", padding=5)
+        console_frame.grid(row=0, column=1, sticky="nsew", padx= (15, 0))
+        console_frame.columnconfigure(0, weight=1)
+        console_frame.rowconfigure(0, weight=1)
+
+        self.benchmark_console = tk.Text(console_frame, width=32, height=32, wrap = "word")
+        self.benchmark_console.grid(row=0, column=0, sticky="nsew")
+
+        scrollbar = ttk.Scrollbar(console_frame, orient="vertical", command=self.benchmark_console.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.benchmark_console.configure(yscrollcommand=scrollbar.set)
+        self.benchmark_console.insert("end", "Ready to configure a benchmark.\n")
+        self.benchmark_console.configure(state="disabled")
+
+        #Left: benchmark inputs
+        self.benchmark_config_frame = ttk.LabelFrame(top, text="Benchmark Configuration", padding=8)
+        self.benchmark_config_frame.grid(row=0, column=0, sticky="nsew")
+        self.benchmark_config_frame.columnconfigure(1, weight=1)
+
+        self.benchmark_n_values = tk.StringVar(value="500, 1000")
+        self.benchmark_dt_values = tk.StringVar(value="1e-18, 5e-18")
+
+        for row, (label, variable) in enumerate([
+            ("N values:", self.benchmark_n_values),
+            ("dt values:", self.benchmark_dt_values)
+        ]):
+            ttk.Label(self.benchmark_config_frame, text=label).grid(row=row, column=0, padx=(0,8), pady=3, sticky="w")
+            ttk.Entry(self.benchmark_config_frame, textvariable=variable).grid(row=row, column=1, pady=3, sticky="ew")
+
+        ttk.Label(self.benchmark_config_frame, text= "Seperate values with commas.").grid(row=2, column=1, sticky="w")
+
+        #Make numerical input frame
+        numerical_frame = ttk.LabelFrame(self.benchmark_config_frame, text="Numerical Parameters", padding=6)
+        numerical_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(10,0))
+        numerical_frame.columnconfigure(1, weight = 1)
+
+        self.benchmark_numerical_entries = {}
+        for row,name in enumerate(("mass", "hbar", "x_min", "x_max", "T_final")):
+            ttk.Label(numerical_frame, text=name).grid(row=row, column=0, sticky="w", padx=(0,8), pady=2)
+            entry = ttk.Entry(numerical_frame)
+            entry.grid(row=row, column=1, sticky="ew", pady=2)
+            self.benchmark_numerical_entries[name] = entry
+        
+        #Bottom: show after user click save
+
+        self.benchmark_results_frame = ttk.LabelFrame(tab, text="Benchmark Results", padding=8)
+        self.benchmark_results_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
+        self.benchmark_results_frame.grid_remove()
 
 
 
@@ -247,7 +308,7 @@ class MainWindow(tk.Tk):
             fill(entry, config.potential_parameters[name])
 
 
-
+    #Method for the wave input frame --------------------
     def CreateWaveSection(self):
 
         self.wave_frame = ttk.LabelFrame(self.input_frame,text="Wave Function")
@@ -351,6 +412,7 @@ class MainWindow(tk.Tk):
 
             self.wave_entries[name] = entry
 
+    #Methods for the potential input frame --------------------
     def CreatePotentialSection(self):
 
         self.potential_frame = ttk.LabelFrame(self.input_frame,text="Potential")
@@ -408,6 +470,7 @@ class MainWindow(tk.Tk):
 
             self.potential_entries[name] = entry
 
+    #Methods for the numerical input frame --------------------
     def CreateNumericalSection(self):
 
         frame = ttk.LabelFrame(self.input_frame,text="Numerical Parameters")
@@ -462,6 +525,7 @@ class MainWindow(tk.Tk):
 
         self.run_button.pack(pady=10)
 
+    #Methods for the run button ----------------------------------
     def OnRunSimulation(self):
         try:
             config = self.BuildSimulationConfig()
@@ -501,6 +565,7 @@ class MainWindow(tk.Tk):
         finally:
             self.run_button.configure(state="normal", text="Run Simulation")
 
+    #The save button ------------------------------------
     def OnSaveResults(self):
 
         if self.current_results is None:
