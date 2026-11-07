@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
 import math
+from dataclasses import replace
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -10,6 +11,7 @@ from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration, CONFIG_FILE
+from Benchmark import BuildBenchmarkProblem
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -294,6 +296,8 @@ class MainWindow(tk.Tk):
         for name in ("mass", "hbar", "T_final"):
             if numerical[name] <= 0:
                 raise ValueError(f"{name} must be positive.")
+        if numerical["x_max"] <= numerical["x_min"]:
+            raise ValueError("Use x_max > x_min")
         for dt in dt_values:
             self.BenchmarkStepCheck(numerical["T_final"], dt)
         if wave_type == "Gaussian Packet" and wave_parameters["sigma"] <= 0:
@@ -301,7 +305,7 @@ class MainWindow(tk.Tk):
         if wave_type == "Harmonic Oscillator Eigenstate" and (wave_parameters["n"] < 0 or wave_parameters["omega"] <= 0):
             raise ValueError("Harmonic Oscillator Eigenstate requires n >= 0 and omega > 0.")
         if potential_type == "Harmonic Oscillator" and potential_parameters["omega"] <= 0:
-            raise ValueError("Harmonic Oscillator potential requires n >= 0 and omega > 0.")
+            raise ValueError("Harmonic Oscillator potential requires omega > 0.")
         if potential_type in ("Barrier", "Infinite Square Well") and (potential_parameters["x_left"] >= potential_parameters["x_right"]):
             raise ValueError("This potential type requires x_left < x_right.")
 
@@ -328,6 +332,10 @@ class MainWindow(tk.Tk):
             config, n_values, dt_values = self.BuildBenchmarkConfig()
             step_lines = []
             
+            for n in n_values:
+                setting = replace(config, N = n) #Make a copy of config with one changed field
+                BuildBenchmarkProblem(setting)
+
             for dt in dt_values:
                 steps = self.BenchmarkStepCheck(config.T_final, dt)
                 step_lines.append(f"dt = {dt:g}: {steps} steps per solver.\n")
