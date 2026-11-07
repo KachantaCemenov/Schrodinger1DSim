@@ -454,13 +454,9 @@ def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
 
     plt.figure(figsize=(7,5))
 
-    cn = res[
-        res["method"] == "CN"
-    ]
+    cn = res[res["method"] == "CN"]
 
-    ssf = res[
-        res["method"] == "SSF"
-    ]
+    ssf = res[res["method"] == "SSF"]
 
     plt.scatter(
         cn["runtime"],
@@ -475,14 +471,9 @@ def PlotRuntime_vs_Metric(problem_folder, metric = "L2", stat = "max"):
     )
 
     plt.xlabel("Runtime (seconds)")
-    plt.ylabel(
-        f"{stat.capitalize()} {ylabel}"
-    )
+    plt.ylabel(f"{stat.capitalize()} {ylabel}")
 
-    plt.title(
-        f"Runtime vs "
-        f"{stat.capitalize()} {ylabel}"
-    )
+    plt.title(f"Runtime vs {stat.capitalize()} {ylabel}")
 
     plt.legend()
     plt.grid()

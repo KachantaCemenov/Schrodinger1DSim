@@ -23,9 +23,10 @@ This script is meant to be used in another scripts that read the data as compari
 
 def RunComparison(setting_folder : Path,
                   N, dt, T_final, grid, wave_func, potential, analytical,
-                  mass: float = 1.0, hbar: float = 1.0
+                  mass: float = 1.0, hbar: float = 1.0, *, steps: int | None = None #BenchmarkTab will pass the steps
                   ):
-    
+    if steps is None:
+        steps = int(T_final / dt)
 
     #Initialize solvers
     CN_solver = CrankNicolsonSolver(grid=grid, potential=potential, dt=dt, mass=mass, hbar=hbar)
@@ -36,27 +37,28 @@ def RunComparison(setting_folder : Path,
     wave_cn = wave_func.Copy()  # Create a copy of the wave function for the CN solver
     wave_ssf = wave_func.Copy()  # Create a copy of the wave function for the SSF solver
 
-    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, grid = grid, mass = mass, hbar = hbar,
+    RunSolvers_AndWriteToFile(N = N, dt = dt, T_final = T_final, grid = grid, mass = mass, hbar = hbar, 
                               wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, analytical = analytical,
-                                CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder)
+                                CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder, steps=steps)
 
     wave_cn = wave_func.Copy()  
     wave_ssf = wave_func.Copy()  
 
     RunSolvers_AndWriteRuntime(N = N, dt = dt, T_final = T_final, wave_cn = wave_cn, wave_ssf = wave_ssf, potential = potential, 
-                                CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder)
+                                CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder, steps=steps)
 
 
 
 
 def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
-                              wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, analytical,
-                              CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver,
-                setting_folder):
+                              wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
+                              analytical,
+                              CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver, 
+                              setting_folder, *, steps):
 
     metric_path = setting_folder / f"comparison_data.csv" #path for metrics
 
-    steps = int(T_final / dt)
+    #steps = int(T_final / dt) This get passed from RunComparison()
 
 
     with open(metric_path, mode='w', newline='') as file:
@@ -97,12 +99,14 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                     cn_L2, ssf_L2
                 ])
 
-def RunSolvers_AndWriteRuntime(N, dt, T_final, wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
-                               CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver, setting_folder):
+def RunSolvers_AndWriteRuntime(N, dt, T_final, 
+                               wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
+                               CN_solver: CrankNicolsonSolver, SSF_solver: SplitStepFourierSolver, 
+                               setting_folder, *, steps):
 
     
     runtime_path = setting_folder / f"runtime_data.txt"   #path for runtime
-    steps = int(T_final / dt)
+    #steps = int(T_final / dt)
     with open(runtime_path, mode='w', newline='') as file:
             
         start = perf_counter()
