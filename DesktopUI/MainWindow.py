@@ -248,6 +248,7 @@ class MainWindow(tk.Tk):
 
         return n_values, dt_values
 
+    #Check T and dt are valid
     def BenchmarkStepCheck(self, T, dt):
         if not math.isfinite(T) or T <= 0:
             raise ValueError("T_final must be finite and positive.")
@@ -261,27 +262,85 @@ class MainWindow(tk.Tk):
             raise ValueError(f"T_final must be whole number of steps for dt = {dt:g}.")
         return steps
 
+    def BuildBenchmarkConfig(self):
+
+        n_values, dt_values = self.ReadBenchmarkSweep()
+
+        #Read out the numericals
+        numerical = {}
+        for name, entry in self.benchmark_numerical_entries.items():
+            numerical[name] = self.ReadEntry(entry, name, float)
+
+        #Read out the wave inputs
+        wave_type = self.benchmark_wave_type.get()
+        wave_parameters = {}
+        for name, expected_type in WAVE_PARAMETERS[wave_type].items():
+            wave_parameters[name] = self.ReadEntry(self.benchmark_wave_entries[name], f"Wave function / {name}", expected_type)
+        
+        #Read out the potential inputs
+        potential_type = self.benchmark_potential_type.get()
+        potential_parameters = {}
+        for name, expected_type in POTENTIAL_PARAMETERS[potential_type].items():
+            potential_parameters[name] = self.ReadEntry(self.benchmark_potential_entries[name], f"Potential / {name}", expected_type)
+        
+        #Checking the numbers
+        for name, value in numerical.items():
+            if not math.isfinite(value):
+                raise ValueError(f"{name} must be finite.")
+        for parameters in (wave_parameters, potential_parameters):
+            for name, value in parameters.items():
+                if isinstance(value, float) and not math.isfinite(value):
+                    raise ValueError(f"{name} must be finite.")
+        for name in ("mass", "hbar", "T_final"):
+            if numerical[name] <= 0:
+                raise ValueError(f"{name} must be positive.")
+        for dt in dt_values:
+            self.BenchmarkStepCheck(numerical["T_final"], dt)
+        if wave_type == "Gaussian Packet" and wave_parameters["sigma"] <= 0:
+            raise ValueError("Gaussian Packet requires sigma > 0.")
+        if wave_type == "Harmonic Oscillator Eigenstate" and (wave_parameters["n"] < 0 or wave_parameters["omega"] <= 0):
+            raise ValueError("Harmonic Oscillator Eigenstate requires n >= 0 and omega > 0.")
+        if potential_type == "Harmonic Oscillator" and potential_parameters["omega"] <= 0:
+            raise ValueError("Harmonic Oscillator potential requires n >= 0 and omega > 0.")
+        if potential_type in ("Barrier", "Infinite Square Well") and (potential_parameters["x_left"] >= potential_parameters["x_right"]):
+            raise ValueError("This potential type requires x_left < x_right.")
+
+
+        config = SimulationConfig(
+            **numerical,
+            N = n_values[0],
+            dt = dt_values[0],
+            solver = "SSF",  #This is just to fill the field required by SimulationConfig (I want to reuse it)
+            wave_mode = "Preset",
+            wave_type = wave_type,
+            wave_parameters = wave_parameters,
+            potential_type = potential_type,
+            potential_parameters = potential_parameters
+            )
+
+        return config, n_values, dt_values
+
+
 
 
     def PreviewBenchmarkSweep(self):
         try:
-            n_values, dt_values = self.ReadBenchmarkSweep()
+            config, n_values, dt_values = self.BuildBenchmarkConfig()
             step_lines = []
-            T_entry = self.benchmark_numerical_entries["T_final"]
-            if T_entry.get().strip():
-                T = self.ReadEntry(T_entry, "T_final", float)
-                for dt in dt_values:
-                    steps = self.BenchmarkStepCheck(T, dt)
-                    step_lines.append(f"dt = {dt:g}: {steps} steps per solver\n")
+            
+            for dt in dt_values:
+                steps = self.BenchmarkStepCheck(config.T_final, dt)
+                step_lines.append(f"dt = {dt:g}: {steps} steps per solver.\n")
 
         except ValueError as e:
-            messagebox.showerror("Invalid benchmark sweep: ", str(e), parent=self) #remember to add parent=self else it spawn new window on taskbar
+            messagebox.showerror("Invalid benchmark configuration: ", str(e), parent=self) #remember to add parent=self else it spawn new window on taskbar
             return
         
         count = len(n_values) * len(dt_values)
         console = self.benchmark_console
         console.configure(state="normal")
-        console.insert("end",f"Sweep: {len(n_values)} N values x {len(dt_values)} dt values = {count} combinations.\n")
+        console.insert("end",f"{config.wave_type} & {config.potential_type}\n"
+                             f"Sweep: {len(n_values)} N values x {len(dt_values)} dt values = {count} combinations.\n")
         console.insert("end", "".join(step_lines))
         console.see("end") #scroll down to "end" (tk.END)
         console.configure(state="disabled")
