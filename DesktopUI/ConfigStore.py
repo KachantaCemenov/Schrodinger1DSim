@@ -44,7 +44,7 @@ def LoadConfiguration(name):
     return SimulationConfig(**configs[name])
 
 
-def ReadBenchmarkConfiguration():
+def ReadBenchmarkConfigurations():
     if not BENCHMARK_CONFIG_FILE.exists():
         return {}
     with BENCHMARK_CONFIG_FILE.open("r", encoding = "utf-8") as f:
@@ -55,7 +55,7 @@ def ReadBenchmarkConfiguration():
     return configs
 
 def SaveBenchmarkConfiguration(name, run):
-    configs = ReadBenchmarkConfiguration()
+    configs = ReadBenchmarkConfigurations()
     configs[name] = run
 
     #serialize

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
 import math
-from dataclasses import replace
+from dataclasses import replace, asdict
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -10,7 +10,8 @@ from Simulation import SimulationConfig
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
-from ConfigStore import ReadConfigurations, SaveConfiguration, LoadConfiguration, CONFIG_FILE
+from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
+            CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
 from Benchmark import BuildBenchmarkProblem
 
 class MainWindow(tk.Tk):
@@ -194,14 +195,61 @@ class MainWindow(tk.Tk):
             entry.grid(row=row, column=1, sticky="ew", pady=2)
             self.benchmark_numerical_entries[name] = entry
         
-        #Make new self fields here cus self.wave_type depends on entry in simulation tab
-        self.benchmark_wave_type, self.benchmark_wave_entries = ( 
+        #Make new self field for wave/ pot types cus self.wave_type depends on entry in simulation tab
+        self.benchmark_wave_type, self.benchmark_wave_entries, self.RefreshBenchmarkWaveFields = ( 
             self.CreateBenchmarkPresetSection("Wave Function", WAVE_PARAMETERS, row = 4))
-        self.benchmark_potential_type, self.benchmark_potential_entries = ( 
+
+        self.benchmark_potential_type, self.benchmark_potential_entries, self.RefreshBenchmarkPotentialFields = ( 
             self.CreateBenchmarkPresetSection("Potential", POTENTIAL_PARAMETERS, row = 5))
 
-        ttk.Button(self.benchmark_config_frame, text="Preview sweep",
+
+        ttk.Button(self.benchmark_config_frame, text="Preview problem",
                    command=self.PreviewBenchmarkSweep).grid(row=6, columnspan=2, sticky="ew", pady=(10,0))
+
+        #Put problem frame beneath console on the right (row 1)
+        self.benchmark_problems = {}
+        self.benchmark_problem_name = tk.StringVar()
+
+        problems_frame = ttk.LabelFrame(console_frame, text = "Problems in this run", padding = 6)
+        problems_frame.grid(row = 1, column = 0, columnspan = 2, sticky = "ew", pady = (8,0))
+        problems_frame.columnconfigure(1, weight = 1)
+
+        ttk.Label(problems_frame, text = "Problem name").grid(row = 0, column = 0, sticky = "w", padx = (0, 8))
+        ttk.Entry(problems_frame, textvariable = self.benchmark_problem_name).grid(row=0, column=1, sticky="ew")
+        ttk.Button(problems_frame, text = "Add / Update",
+                   command = self.AddBenchmarkProblem).grid(row = 0, column = 2, padx = (8,0))
+
+        self.benchmark_problem_list = tk.Listbox(problems_frame, height = 5, exportselection = False)
+        self.benchmark_problem_list.grid(row = 1, column = 0, columnspan = 3, sticky = "ew", pady = 6)
+
+        ttk.Button(problems_frame, text = "Load selected into form", command = self.LoadSelectedBenchmarkProblem).grid(row = 2, column = 0, columnspan = 2, sticky = 'w')
+        ttk.Button(problems_frame, text = "Remove selected", command = self.RemoveBenchmarkProblem).grid(row = 2, column = 2, sticky = 'e')
+        ttk.Button(problems_frame, text = "Preview run", command = self.PreviewBenchmarkRun).grid(row = 3, column = 0, columnspan = 3, sticky = "ew", pady = (6, 0))
+        
+        #Frame that collect the entire benchmark run 
+        self.benchmark_run_config_frame = ttk.LabelFrame(console_frame, text="Run Configuration", padding=6)
+        self.benchmark_run_config_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.benchmark_run_config_frame.columnconfigure(1, weight=1)
+
+        self.benchmark_run_name = tk.StringVar()
+
+        ttk.Label(self.benchmark_run_config_frame, text="Configuration name").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        ttk.Entry(self.benchmark_run_config_frame,textvariable=self.benchmark_run_name).grid(row=0, column=1, sticky="ew")
+        ttk.Button(self.benchmark_run_config_frame,text="Save run configuration",command=self.OnSaveBenchmarkConfig).grid(row=0, column=2, padx=(8, 0))
+
+        self.benchmark_saved_config = tk.StringVar()
+        self.benchmark_last_selected_config = ""
+
+        ttk.Label(self.benchmark_run_config_frame,text="Saved configurations").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=5)
+
+        self.benchmark_config_dropdown = ttk.Combobox(self.benchmark_run_config_frame, textvariable=self.benchmark_saved_config, state="readonly")
+        self.benchmark_config_dropdown.grid(row=1, column=1, sticky="ew", pady=5)
+        self.benchmark_config_dropdown.bind("<<ComboboxSelected>>", self.OnBenchmarkConfigSelected)
+
+        try:
+            self.RefreshBenchmarkConfigList()
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Cannot read benchmark configurations", str(error), parent=self)
 
 
 
@@ -213,6 +261,188 @@ class MainWindow(tk.Tk):
 
     #Methods for Benchmark Tab -----------------------------------------
 
+    #Save, delete and load benchmark configs
+    def RefreshBenchmarkProblems(self, selected_name = None):
+        problem_list = self.benchmark_problem_list
+        problem_list.delete(0, tk.END) #reset the list
+
+        for idx, name in enumerate(self.benchmark_problems):
+            problem_list.insert(tk.END, name)
+            if name == selected_name:
+                problem_list.selection_set(idx)
+                problem_list.see(idx)
+
+    def AddBenchmarkProblem(self):
+        name = self.benchmark_problem_name.get().strip()
+
+        if not name:
+            messagebox.showerror("Missing problem name", parent = self)
+            return
+
+        try:
+            config, n_values, dt_values = self.BuildBenchmarkConfig()
+            for n in n_values:
+                BuildBenchmarkProblem(replace(config, N = n)) #Try build it
+        except ValueError as e:
+            messagebox.showerror("Invalid benchmark problem,", str(e), parent = self)
+            return
+
+        #If already in
+        if name in self.benchmark_problems:
+            overwrite = messagebox.askyesno("Update problem", f"Replace '{name}' with current values?", parent = self)
+            if not overwrite:
+                return
+        
+        self.benchmark_problems[name] = config
+        self.RefreshBenchmarkProblems(selected_name = name)
+
+    def ApplyBenchmarkProblem(self, config): #Fill the blanks
+        def fill(entry, value):
+            entry.delete(0, tk.END)
+            entry.insert(0, str(value))
+        
+        for name, entry in self.benchmark_numerical_entries.items():
+            fill(entry, getattr(config, name))
+
+        self.benchmark_wave_type.set(config.wave_type)
+        self.RefreshBenchmarkWaveFields()
+
+        for name, entry in self.benchmark_wave_entries.items():
+            fill(entry, config.wave_parameters[name])
+
+        self.benchmark_potential_type.set(config.potential_type)
+        self.RefreshBenchmarkPotentialFields()
+
+        for name, entry in self.benchmark_potential_entries.items():
+            fill(entry, config.potential_parameters[name])
+
+    def LoadSelectedBenchmarkProblem(self):
+        selection = self.benchmark_problem_list.curselection()
+        if not selection:
+            return
+        
+        name = self.benchmark_problem_list.get(selection[0])
+        config = self.benchmark_problems[name]
+
+        self.ApplyBenchmarkProblem(config)
+        self.benchmark_problem_name.set(name)
+
+
+    def RemoveBenchmarkProblem(self):
+        selection = self.benchmark_problem_list.curselection()
+        if not selection:
+            return
+
+        name = self.benchmark_problem_list.get(selection[0])
+        del self.benchmark_problems[name]
+        self.RefreshBenchmarkProblems()
+
+    def RefreshBenchmarkConfigList(self, selected=None):
+        names = sorted(ReadBenchmarkConfigurations(), key=str.casefold)
+
+        self.benchmark_config_dropdown.configure(values=["Open configuration folder...", *names])
+
+        if selected not in names:
+            selected = names[0] if names else ""
+
+        self.benchmark_last_selected_config = selected
+        self.benchmark_saved_config.set(selected)
+
+    def OnBenchmarkConfigSelected(self, event=None):
+        if self.benchmark_config_dropdown.current() != 0:
+            self.benchmark_last_selected_config = (self.benchmark_saved_config.get())
+            return
+
+        self.benchmark_saved_config.set(self.benchmark_last_selected_config)
+
+        try:
+            folder = BENCHMARK_CONFIG_FILE.parent
+            folder.mkdir(parents=True, exist_ok=True)
+            os.startfile(folder)
+        except OSError as error:
+            messagebox.showerror("Cannot open configuration folder", str(error), parent=self)
+
+    def OnSaveBenchmarkConfig(self):
+        name = self.benchmark_run_name.get().strip()
+        if not name:
+            messagebox.showerror("Missing configuration name.\nEnter a name for this run configuration.",parent=self)
+            return
+
+        try:
+            run = self.BuildBenchmarkRunConfig()
+
+            if name in ReadBenchmarkConfigurations():
+                overwrite = messagebox.askyesno("Replace configuration",
+                        f"Replace the saved run configuration '{name}'?",parent=self,)
+                if not overwrite:
+                    return
+
+            SaveBenchmarkConfiguration(name, run)
+            self.RefreshBenchmarkConfigList(selected = name)
+
+        except (OSError, ValueError, TypeError) as error:
+            messagebox.showerror(
+                "Cannot save benchmark configuration", str(error), parent=self
+            )
+            return
+
+        console = self.benchmark_console
+        console.configure(state="normal")
+        console.insert("end",f"Saved run configuration '{name}' with {len(run['problems'])} problems.\nFile: {BENCHMARK_CONFIG_FILE}\n")
+        console.see("end")
+        console.configure(state="disabled")
+
+
+    def PreviewBenchmarkRun(self):
+        try:
+            run = self.BuildBenchmarkRunConfig()
+        except ValueError as e:
+            messagebox.showerror("Invalid benchmark run,", str(e), parent = self)
+            return
+
+        problem_count = len(run["problems"])
+        combinations = (problem_count * len(run["N_values"]) * len(run["dt_values"]))
+
+        console = self.benchmark_console
+        console.configure(state="normal")
+        console.insert("end",f"Run preview: {problem_count} problems, {combinations} problem/N/dt combinations.\n")
+        for name in run["problems"]:
+            console.insert("end", f"  {name}\n")
+        console.see("end")
+        console.configure(state="disabled")
+        
+
+    def BuildBenchmarkRunConfig(self):
+        if not self.benchmark_problems:
+            raise ValueError("Add at least one problem to the run.")
+
+        n_values, dt_values = self.ReadBenchmarkSweep()
+        problems = {}
+
+        #Check each
+        for name, config in self.benchmark_problems.items():
+            try:
+                for dt in dt_values:
+                    self.BenchmarkStepCheck(config.T_final, dt)
+
+                for n in n_values:
+                    BuildBenchmarkProblem(replace(config, N=n))
+
+            except ValueError as error:
+                raise ValueError(f"Problem '{name}': {error}") from None
+
+            # Store current initial sweep values in config.
+            saved_config = replace(config, N=n_values[0], dt=dt_values[0])
+            problems[name] = asdict(saved_config) #Need asdict so can save to json
+
+        return {
+            "version": 1,
+            "N_values": n_values,
+            "dt_values": dt_values,
+            "problems": problems,
+        }
+
+    
     def ReadBenchmarkSweep(self):
 
         #method for reading the strings of N and dt
@@ -391,7 +621,7 @@ class MainWindow(tk.Tk):
 
         dropdown.bind("<<ComboboxSelected>>", ShowParameters)
         ShowParameters()
-        return selected, entries
+        return selected, entries, ShowParameters #Get the ShowParameters so I can call it when loading a preset
 
 
 
