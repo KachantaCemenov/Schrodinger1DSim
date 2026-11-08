@@ -6,6 +6,7 @@ from Simulation import SimulationConfig
 
 #Path.home() -> WindowsPath('C:/Users/Username')
 CONFIG_FILE = Path.home() / "Schrodinger1DSim" / "configurations.json"
+BENCHMARK_CONFIG_FILE = CONFIG_FILE.with_name("benchmark_configurations.json")
 
 
 def ReadConfigurations():
@@ -41,3 +42,27 @@ def LoadConfiguration(name):
         raise ValueError(f"No saved configuration named {name!r}.")
 
     return SimulationConfig(**configs[name])
+
+
+def ReadBenchmarkConfiguration():
+    if not BENCHMARK_CONFIG_FILE.exists():
+        return {}
+    with BENCHMARK_CONFIG_FILE.open("r", encoding = "utf-8") as f:
+        configs = json.load(f)
+
+    if not isinstance(configs, dict):
+        raise ValueError("Could not read dict out of json.\nMissing a name?")
+    return configs
+
+def SaveBenchmarkConfiguration(name, run):
+    configs = ReadBenchmarkConfiguration()
+    configs[name] = run
+
+    #serialize
+    contents = json.dumps(configs, indent = 2, allow_nan = False) #Never allow nan
+
+    BENCHMARK_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = BENCHMARK_CONFIG_FILE.with_suffix(".tmp")
+    temp_file.write_text(contents, encoding="utf-8")
+    temp_file.replace(BENCHMARK_CONFIG_FILE)
+
