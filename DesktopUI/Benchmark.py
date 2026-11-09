@@ -1,7 +1,13 @@
 from functools import partial
 import numpy as np
+import json
+from dataclasses import replace
+from pathlib import Path
+
 from Simulation import BuildGrid, BuildWaveFunction, BuildPotential
 from ComparingMethods.AnalyticalSolutions import FreeGaussianAnalytical,PlaneWaveAnalytical
+from Simulation import SimulationConfig
+from ComparingMethods.CompareMethods import RunComparison
 
 def BuildBenchmarkProblem(config):
     supported_waves = ("Gaussian Packet", "Plane Wave")
@@ -46,4 +52,56 @@ def BuildBenchmarkProblem(config):
         def analytical(t):
             return raw_analytical(t = t) / initial_norm
 
-    return grid, wave, potential, analytical
+        def reference(t):
+            return analytical(t=t) #Because RunComparison call analytical(0) that won't fit the argument list of partial()
+
+    return grid, wave, potential, reference
+
+
+def RunBenchmarkConfiguration(run, output_folder, progress):
+    output_folder = Path(output_folder)
+    total = len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"])
+    completed = 0
+    results = []
+
+    for problem_idx, (name, data) in enumerate(run["problems"].items(), start = 1):
+        base_config = SimulationConfig(**data)
+
+        for n_idx, n in enumerate(run["N_values"], start = 1):
+            for dt_idx, dt in enumerate(run["dt_values"], start = 1):
+                progress.put(f"[{completed + 1} / total] Running {name}, N = {n}, dt = {dt:g}")
+
+                config = replace(base_config, N = n, dt = dt)
+
+                grid, wave, potential, analytical = BuildBenchmarkProblem(config)
+
+                relative_folder = Path(f"problem_{problem_idx:03d}") / f"N_{n_idx:03d}_dt_{dt_idx:03d}"
+                setting_folder = output_folder / relative_folder
+                setting_folder.mkdir(parents = True, exist_ok = False)
+
+                RunComparison(
+                    setting_folder = setting_folder,
+                    N = n,
+                    dt = dt,
+                    T_final = config.T_final,
+                    grid = grid,
+                    wave_func = wave,
+                    potential = potential
+                    analytical = analytical,
+                    mass = config.mass,
+                    hbar = config.hbar,
+                    steps = round(config.T_final / dt)
+                    )
+
+                results.append({
+                    "problem": name,
+                    "N": n,
+                    "dt": dt,
+                    "folder": relative_folder.as_posix()
+                    })
+                completed += 1
+                progress.put(f"[{completed}/{total}] Finished {name}")
+
+    manifest = {"configuration": run, "results": results}
+    (output_folder / "run.json").write_text(json.dump(done, indent = 2, allow_nan = False), encoding = "utf-8")
+    return manifest
