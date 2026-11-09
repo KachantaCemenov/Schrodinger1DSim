@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
             CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
-from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration
+from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -264,7 +264,12 @@ class MainWindow(tk.Tk):
         except (OSError, ValueError) as error:
             messagebox.showerror("Cannot read benchmark configurations", str(error), parent=self)
 
-
+        #Button to save results
+        self.benchmark_saved_folder = None
+        self.benchmark_saved_manifest = None
+        self.open_benchmark_folder_button = ttk.Button(self.benchmark_run_config_frame, text = "Open results folder",
+                                                       command = self.OpenBenchmarkResultsFolder, state = "disabled")
+        self.open_benchmark_folder_button.grid(row = 3, column = 0, columnspan = 3, sticky = "ew", pady = (5,0))
 
 
         #Bottom: table and graph show after user click save
@@ -592,8 +597,79 @@ class MainWindow(tk.Tk):
             self.start_benchmark_button.configure(state="normal", text="Start run")
             return
 
-        self.AppendBenchmarkConsoleMessage(f"Run completed.\nTemporary results: {self.benchmark_temp_directory.name}")
-        self.start_benchmark_button.configure(text = "Run completed, results ready")
+        self.AppendBenchmarkConsoleMessage(f"Run completed.")
+        self.start_benchmark_button.configure(state = "normal", text = "Save / discard completed run", command = self.OfferBenchmarkSave)
+        self.OfferBenchmarkSave()
+
+    def OfferBenchmarkSave(self): #When save button is pressed
+        save = messagebox.askyesno("Benchmark completed",
+            "Save this run's results?\n\nChoose No to discard the temporary results.", parent=self)
+        if not save:
+            self.AppendBenchmarkConsoleMessage("Completed run discarded.")
+            self.ReleaseCompletedBenchmark()
+            return
+
+        parent_folder = filedialog.askdirectory(title = "Choose where to save the benchmark run", parent = self, mustexist = True)
+        if not parent_folder:
+            #Do nothing, user can open that again through the button
+            return
+        self.start_benchmark_button.configure(state = "disabled", text = "Saving results...")
+
+        #Try save
+        worker = ThreadPoolExecutor(max_workers=1)
+        try:
+            self.benchmark_save_future = worker.submit(SaveBenchmarkResults, self.benchmark_temp_directory.name, parent_folder)
+        except Exception as error:
+            self.start_benchmark_button.configure(state="normal", text="Save / discard completed run")
+            messagebox.showerror("Cannot start saving", str(error), parent=self)
+            return
+        finally:
+            worker.shutdown(wait=False)
+        self.after(100, self.PollBenchmarkSave)
+
+    def PollBenchmarkSave(self):
+        if not self.benchmark_save_future.done():
+            self.after(100, self.PollBenchmarkSave)
+            return
+
+        try:
+            saved_folder = self.benchmark_save_future.result()
+        except Exception as e:
+            self.AppendBenchmarkConsoleMessage(f"Saving failed: {e}")
+            messagebox.showerror("Cannot save results", f"{e}\n\nThe temporary results are available for retry.", parent=self)
+            self.start_benchmark_button.configure(state = "normal", text = "Save / discard completed run")
+            return
+
+        #let this script know the folder and results
+        self.benchmark_saved_folder = saved_folder
+        self.benchmark_saved_manifest = self.benchmark_manifest
+        self.open_benchmark_folder_button.configure(state="normal")
+
+        self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
+        self.ReleaseCompletedBenchmark()
+
+
+    #Method to reset the temporary folder
+    def ReleaseCompletedBenchmark(self):
+        try:
+            self.benchmark_temp_directory.cleanup()
+        except OSError as error:
+            self.AppendBenchmarkConsoleMessage(f"Could not fully remove temporary files: {error}")
+
+        self.benchmark_temp_directory = None
+        self.benchmark_future = None
+        self.benchmark_manifest = None
+        self.start_benchmark_button.configure(state="normal", text="Start run", command=self.OnStartBenchmarkRun)
+
+    def OpenBenchmarkResultsFolder(self):
+        if self.benchmark_saved_folder is None:
+            return
+        try:
+            os.startfile(self.benchmark_saved_folder)
+        except OSError as error:
+            messagebox.showerror("Cannot open results folder", str(error), parent=self)
+
+
 
 
     def PreviewBenchmarkRun(self):

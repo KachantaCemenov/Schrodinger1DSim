@@ -3,6 +3,11 @@ import numpy as np
 import json
 from dataclasses import replace
 from pathlib import Path
+import shutil
+from datetime import datetime
+from tempfile import TemporaryDirectory
+from uuid import uuid4
+
 
 from Simulation import BuildGrid, BuildWaveFunction, BuildPotential
 from ComparingMethods.AnalyticalSolutions import FreeGaussianAnalytical,PlaneWaveAnalytical
@@ -105,3 +110,17 @@ def RunBenchmarkConfiguration(run, output_folder, progress): #progress is a queu
     manifest = {"configuration": run, "results": results}
     (output_folder / "run.json").write_text(json.dumps(manifest, indent = 2, allow_nan = False), encoding = "utf-8")
     return manifest
+
+
+def SaveBenchmarkResults(source_folder, parent_folder):
+    parent_folder = Path(parent_folder)
+    run_name = f"run_{datetime.now():%Y-%m-%d_%H-%M-%S}_{uuid4().hex[:8]}"
+    destination = parent_folder / run_name
+
+    #Keep the folder as temporary until every file is copied
+    with TemporaryDirectory(dir = parent_folder, prefix = ".benchmark_saving_") as staging:
+        copied_folder = Path(staging) / "results"
+        shutil.copytree(source_folder, copied_folder)
+        copied_folder.rename(destination)
+
+    return destination
