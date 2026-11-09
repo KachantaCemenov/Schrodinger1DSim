@@ -246,10 +246,14 @@ class MainWindow(tk.Tk):
         self.benchmark_config_dropdown.grid(row=1, column=1, sticky="ew", pady=5)
         self.benchmark_config_dropdown.bind("<<ComboboxSelected>>", self.OnBenchmarkConfigSelected)
 
+        #Button to load benchmark
+        ttk.Button(self.benchmark_run_config_frame, text = "Load", command = self.OnLoadBenchmarkConfig).grid(row = 1, column = 2, padx = (8,0), pady = 5)
+        
         try:
             self.RefreshBenchmarkConfigList()
         except (OSError, ValueError) as error:
             messagebox.showerror("Cannot read benchmark configurations", str(error), parent=self)
+
 
 
 
@@ -362,10 +366,129 @@ class MainWindow(tk.Tk):
         except OSError as error:
             messagebox.showerror("Cannot open configuration folder", str(error), parent=self)
 
+
+    def ReadSavedBenchmarkRun(self, name):
+        saved = ReadBenchmarkConfigurations()
+
+        if name not in saved:
+            raise ValueError(f"Can't find name '{name}' among saved configurations.")
+
+        run = saved[name]
+        if not isinstance(run, dict) or run.get("version") != 1:
+            raise ValueError("This benchmark configuration format is not supported.")
+
+        n_values = run["N_values"]
+        dt_values = run["dt_values"]
+        
+        #Check N and dt
+        if not isinstance(n_values, list) or not n_values:
+            raise ValueError("Saved list of N must be a list and must contain values.")
+        if not isinstance(dt_values, list) or not dt_values:
+            raise ValueError("Saved list of dt must be a list and must contain values.")
+
+        for n in n_values:
+            if type(n) is not int or not 3 <= n <= MAX_GRID_POINTS:
+                raise ValueError(f"Saved N must be integers from 3 to {MAX_GRID_POINTS}.")
+        for dt in dt_values:
+            if type(dt) not in (int, float) or not math.isfinite(dt) or dt <= 0:
+                raise ValueError(f"Saved dt must be finite and positive numbers.")
+
+        if len(set(n_values)) != len(n_values):
+            raise ValueError("The saved N list contains duplicates.")
+        if len(set(dt_values)) != len(dt_values):
+            raise ValueError("The saved dt list contains duplicates.")
+
+        saved_problems = run["problems"]
+        if not isinstance(saved_problems, dict) or not saved_problems:
+            raise ValueError("The saved run must contain at least one problem.")
+
+        problems = {}
+
+        #Check numericals in each problem
+        for problem_name, data in saved_problems.items():
+
+            if not isinstance(problem_name, str) or not problem_name.strip():
+                raise ValueError("Each saved problem needs a name.")
+            if not isinstance(data, dict):
+                raise ValueError(f"Invalid configuration for '{problem_name}'.")
+
+            config = SimulationConfig(**data)
+
+            for field in ("mass", "hbar", "x_min", "x_max", "T_final"):
+                value = getattr(config, field)
+                if type(value) not in (int, float) or not math.isfinite(value):
+                    raise ValueError(f"Problem '{problem_name}': {field} must be finite.")
+            
+            if min(config.mass, config.hbar, config.T_final) <= 0:
+                raise ValueError(f"Problem '{problem_name}': mass, hbar, T_final must be positive.")
+
+            if config.x_max <= config.x_min:
+                raise ValueError(f"Problem '{problem_name}': use x_max > x_min.")
+
+            if config.wave_mode != "Preset":
+                raise ValueError("Benchmark loading currently only supports presets.")
+
+            #Now check the parameters
+            for selected, parameters, definitions in ((config.wave_type, config.wave_parameters, WAVE_PARAMETERS),
+                                                      (config.potential_type, config.potential_parameters, POTENTIAL_PARAMETERS)):
+                
+                expected = definitions[selected] #the dict of expected parameter types
+                if not isinstance(parameters, dict) or parameters.keys() != expected.keys():
+                    raise ValueError(f"Problem '{problem_name}': invalid parameters for {selected}.")
+
+                for field, expected_type in expected.items():
+                    value = parameters[field]
+                    allowed = (int,) if expected_type is int else (int, float) #Need (int,) so it's a tuple and not just... int, got an exception cus of that
+                    if type(value) not in allowed or not math.isfinite(value):
+                        raise ValueError(f"Problem '{problem_name}': {field} needs to be {allowed} and finite.")
+
+            for dt in dt_values:
+                self.BenchmarkStepCheck(config.T_final, dt) #Check T_final to be whole number of dt
+
+            for n in n_values:
+                BuildBenchmarkProblem(replace(config, N=n, dt=dt_values[0])) #Try building it with any dt to catch the errors
+
+            problems[problem_name] = replace(config, N=n_values[0], dt=dt_values[0]) #[0] here is only to fill the SimulationConfig type
+
+        return problems, n_values, dt_values
+
+    def OnLoadBenchmarkConfig(self):
+        name = self.benchmark_saved_config.get()
+        if not name:
+            messagebox.showerror("No configuration selected","Select a saved run configuration.",parent=self)
+            return
+        try:
+            problems, n_values, dt_values = self.ReadSavedBenchmarkRun(name)
+        except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
+            messagebox.showerror("Cannot load benchmark configuration", str(error), parent=self)
+            return
+
+        if self.benchmark_problems:
+            replace_current = messagebox.askyesno("Load configuration", "Replace current problem list and form values with this saved run?", parent = self)
+
+            if not replace_current:
+                return
+        #Fill
+        self.benchmark_problems = problems
+        self.benchmark_n_values.set(", ".join(map(str, n_values)))
+        self.benchmark_dt_values.set(", ".join(map(str, dt_values)))
+        self.benchmark_run_name.set(name)
+
+        first_name = next(iter(problems)) #Select one problem to show
+        self.RefreshBenchmarkProblems(selected_name=first_name)
+        self.ApplyBenchmarkProblem(problems[first_name])
+        self.benchmark_problem_name.set(first_name)
+ 
+        console = self.benchmark_console
+        console.configure(state="normal")
+        console.insert("end",f"Loaded run configuration '{name}' with {len(problems)} problems.\n")
+        console.see("end")
+        console.configure(state="disabled")
+
     def OnSaveBenchmarkConfig(self):
         name = self.benchmark_run_name.get().strip()
         if not name:
-            messagebox.showerror("Missing configuration name.\nEnter a name for this run configuration.",parent=self)
+            messagebox.showerror("Missing configuration name", "Enter a name for this run configuration.",parent=self)
             return
 
         try:
