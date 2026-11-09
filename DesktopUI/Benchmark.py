@@ -52,13 +52,13 @@ def BuildBenchmarkProblem(config):
         def analytical(t):
             return raw_analytical(t = t) / initial_norm
 
-        def reference(t):
-            return analytical(t=t) #Because RunComparison call analytical(0) that won't fit the argument list of partial()
+    def reference(t):
+        return analytical(t=t) #Because RunComparison call analytical(0) that won't fit the argument list of partial()
 
     return grid, wave, potential, reference
 
 
-def RunBenchmarkConfiguration(run, output_folder, progress):
+def RunBenchmarkConfiguration(run, output_folder, progress): #progress is a queue of progress messages
     output_folder = Path(output_folder)
     total = len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"])
     completed = 0
@@ -69,7 +69,7 @@ def RunBenchmarkConfiguration(run, output_folder, progress):
 
         for n_idx, n in enumerate(run["N_values"], start = 1):
             for dt_idx, dt in enumerate(run["dt_values"], start = 1):
-                progress.put(f"[{completed + 1} / total] Running {name}, N = {n}, dt = {dt:g}")
+                progress.put(f"[{completed + 1} / {total}] Running {name}, N = {n}, dt = {dt:g}")
 
                 config = replace(base_config, N = n, dt = dt)
 
@@ -86,7 +86,7 @@ def RunBenchmarkConfiguration(run, output_folder, progress):
                     T_final = config.T_final,
                     grid = grid,
                     wave_func = wave,
-                    potential = potential
+                    potential = potential,
                     analytical = analytical,
                     mass = config.mass,
                     hbar = config.hbar,
@@ -100,8 +100,8 @@ def RunBenchmarkConfiguration(run, output_folder, progress):
                     "folder": relative_folder.as_posix()
                     })
                 completed += 1
-                progress.put(f"[{completed}/{total}] Finished {name}")
+                progress.put(f"[{completed} / {total}] Finished {name}")
 
     manifest = {"configuration": run, "results": results}
-    (output_folder / "run.json").write_text(json.dump(done, indent = 2, allow_nan = False), encoding = "utf-8")
+    (output_folder / "run.json").write_text(json.dumps(manifest, indent = 2, allow_nan = False), encoding = "utf-8")
     return manifest

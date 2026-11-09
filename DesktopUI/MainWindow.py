@@ -3,6 +3,8 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import math
 from dataclasses import replace, asdict
+from queue import Queue, Empty
+from tempfile import TemporaryDirectory
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -12,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
             CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
-from Benchmark import BuildBenchmarkProblem
+from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -172,7 +174,7 @@ class MainWindow(tk.Tk):
         self.benchmark_config_frame.columnconfigure(1, weight=1)
 
         self.benchmark_n_values = tk.StringVar(value="500, 1000")
-        self.benchmark_dt_values = tk.StringVar(value="1e-18, 5e-18")
+        self.benchmark_dt_values = tk.StringVar(value="1, 2")
 
         for row, (label, variable) in enumerate([
             ("N values:", self.benchmark_n_values),
@@ -249,6 +251,14 @@ class MainWindow(tk.Tk):
         #Button to load benchmark
         ttk.Button(self.benchmark_run_config_frame, text = "Load", command = self.OnLoadBenchmarkConfig).grid(row = 1, column = 2, padx = (8,0), pady = 5)
         
+        #Button to run benchmark
+        self.benchmark_future = None
+        self.benchmark_temp_directory = None
+        self.benchmark_manifest = None
+
+        self.start_benchmark_button = ttk.Button(self.benchmark_run_config_frame, text = "Start run", command = self.OnStartBenchmarkRun)
+        self.start_benchmark_button.grid(row = 2, column = 0, columnspan = 3, sticky = "ew", pady = (8, 0))
+
         try:
             self.RefreshBenchmarkConfigList()
         except (OSError, ValueError) as error:
@@ -266,7 +276,7 @@ class MainWindow(tk.Tk):
     #Methods for Benchmark Tab -----------------------------------------
 
     #Save, delete and load benchmark configs
-    def RefreshBenchmarkProblems(self, selected_name = None):
+    def RefreshBenchmarkProblems(self, selected_name = None): #Refresh problem list (called when add, delete, or load)
         problem_list = self.benchmark_problem_list
         problem_list.delete(0, tk.END) #reset the list
 
@@ -341,7 +351,7 @@ class MainWindow(tk.Tk):
         del self.benchmark_problems[name]
         self.RefreshBenchmarkProblems()
 
-    def RefreshBenchmarkConfigList(self, selected=None):
+    def RefreshBenchmarkConfigList(self, selected=None): #Refresh the run list (called when a run is saved or removed)
         names = sorted(ReadBenchmarkConfigurations(), key=str.casefold)
 
         self.benchmark_config_dropdown.configure(values=["Open configuration folder...", *names])
@@ -514,6 +524,76 @@ class MainWindow(tk.Tk):
         console.insert("end",f"Saved run configuration '{name}' with {len(run['problems'])} problems.\nFile: {BENCHMARK_CONFIG_FILE}\n")
         console.see("end")
         console.configure(state="disabled")
+
+    
+    def AppendBenchmarkConsoleMessage(self, message):
+        console = self.benchmark_console
+        console.configure(state = "normal")
+        console.insert("end", message + "\n")
+        console.see("end")
+        console.configure(state = "disabled")
+
+    def OnStartBenchmarkRun(self):
+        if self.benchmark_future is not None: #something is already running
+            return
+
+        try: 
+            run = self.BuildBenchmarkRunConfig()
+            self.benchmark_temp_directory = TemporaryDirectory(prefix = "SchorodingerBenchmark_") #temporary until user save
+        except (OSError, ValueError) as e:
+            messagebox.showerror("Cannot start benchmark", str(e), parent = self)
+            return
+
+        self.benchmark_progress = Queue()
+        self.start_benchmark_button.configure(state = "disabled", text = "Running...")
+        self.AppendBenchmarkConsoleMessage(f"Starting run with {len(run["problems"])} problems")
+
+        worker = ThreadPoolExecutor(max_workers = 1) #Run in a thread as not to freeze app (beware some runs can take up to an hour)
+        try: 
+            self.benchmark_future = worker.submit(
+                    RunBenchmarkConfiguration,
+                    run,
+                    self.benchmark_temp_directory.name, #output path
+                    self.benchmark_progress)
+        except Exception as e:
+            self.benchmark_temp_directory.cleanup()
+            self.benchmark_temp_directory = None
+            self.start_benchmark_button.configure(state = "normal", text = "Start run")
+            messagebox.showerror("Cannot start benchmark", str(e), parent = self)
+            return
+        finally:
+            worker.shutdown(wait = False)
+        self.after(100, self.PollBenchmarkRun)
+    
+
+    def PollBenchmarkRun(self):
+
+        #Display 100 messages per call  
+        for _ in range(100):
+            try: 
+                message = self.benchmark_progress.get_nowait() #retrive first from queue
+            except Empty:
+                break
+            self.AppendBenchmarkConsoleMessage(message)
+
+        #if haven't finished running benchmarks or not printing the progress queue out
+        if not self.benchmark_future.done() or not self.benchmark_progress.empty(): 
+            self.after(100, self.PollBenchmarkRun)
+            return
+
+        try:
+            self.benchmark_manifest = self.benchmark_future.result()
+        except Exception as e:
+            self.AppendBenchmarkConsoleMessage(f"Run failed: {e}")
+            messagebox.showerror("Benchmark failed", str(e), parent=self)
+            self.benchmark_temp_directory.cleanup()
+            self.benchmark_temp_directory = None
+            self.benchmark_future = None
+            self.start_benchmark_button.configure(state="normal", text="Start run")
+            return
+
+        self.AppendBenchmarkConsoleMessage(f"Run completed.\nTemporary results: {self.benchmark_temp_directory.name}")
+        self.start_benchmark_button.configure(text = "Run completed, results ready")
 
 
     def PreviewBenchmarkRun(self):
