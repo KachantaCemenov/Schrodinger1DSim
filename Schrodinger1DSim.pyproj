@@ -29,6 +29,7 @@
     <Compile Include="ComparingMethods\ReadData.py" />
     <Compile Include="ComparingMethods\RunComparison.py" />
     <Compile Include="DesktopUI\Benchmark.py" />
+    <Compile Include="DesktopUI\BenchmarkResults.py" />
     <Compile Include="DesktopUI\ConfigStore.py" />
     <Compile Include="DesktopUI\main.py" />
     <Compile Include="DesktopUI\MainWindow.py" />

@@ -15,6 +15,7 @@ from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STE
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
             CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
 from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults
+from BenchmarkResults import BenchmarkResults
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -145,11 +146,12 @@ class MainWindow(tk.Tk):
 
     def CreateBenchmarkTab(self):
         tab = self.benchmark_tab
-        tab.columnconfigure(0, weight=1)
-        tab.rowconfigure(0, weight=1)
+        self.benchmark_panes = ttk.Panedwindow(tab, orient = "vertical")
+        self.benchmark_panes.pack(fill = "both", expand = True)
+        top = ttk.Frame(self.benchmark_panes, padding = 10)
+        self.benchmark_panes.add(top, weight = 3)
 
-        top = ttk.Frame(tab, padding=10)
-        top.grid(row=0, column=0, sticky="nsew")
+        
         top.columnconfigure(1, weight=1)
         top.rowconfigure(0, weight=1)
 
@@ -159,7 +161,7 @@ class MainWindow(tk.Tk):
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
 
-        self.benchmark_console = tk.Text(console_frame, width=32, height=32, wrap = "word")
+        self.benchmark_console = tk.Text(console_frame, width=32, height=10, wrap = "word")
         self.benchmark_console.grid(row=0, column=0, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(console_frame, orient="vertical", command=self.benchmark_console.yview)
@@ -274,9 +276,9 @@ class MainWindow(tk.Tk):
 
         #Bottom: table and graph show after user click save
 
-        self.benchmark_results_frame = ttk.LabelFrame(tab, text="Benchmark Results", padding=8)
-        self.benchmark_results_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
-        self.benchmark_results_frame.grid_remove()
+        self.benchmark_results_frame = ttk.LabelFrame(self.benchmark_panes, text="Benchmark Results", padding=8)
+        self.benchmark_results_view = BenchmarkResults(self.benchmark_results_frame)
+        self.benchmark_results_view.pack(fill="both", expand=True)
 
     #Methods for Benchmark Tab -----------------------------------------
 
@@ -647,6 +649,17 @@ class MainWindow(tk.Tk):
 
         self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
         self.ReleaseCompletedBenchmark()
+
+        #Show the graph selection frame
+        if str(self.benchmark_results_frame) not in self.benchmark_panes.panes():
+            self.benchmark_panes.add(self.benchmark_results_frame, weight=2)
+            self.after_idle(self.PositionBenchmarkDivider)
+
+        self.benchmark_results_view.LoadRun(self.benchmark_saved_folder, self.benchmark_saved_manifest)
+
+    def PositionBenchmarkDivider(self):  
+        height = self.benchmark_panes.winfo_height()
+        self.benchmark_panes.sashpos(0, int(height * 0.60))
 
 
     #Method to reset the temporary folder
