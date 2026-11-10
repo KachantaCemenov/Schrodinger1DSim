@@ -7,6 +7,7 @@ import shutil
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from uuid import uuid4
+from time import perf_counter
 
 
 from Simulation import BuildGrid, BuildWaveFunction, BuildPotential, INFINITE_WELL_SSF_MESSAGE
@@ -148,12 +149,34 @@ def BuildBenchmarkProblem(config):
 
     return grid, wave, potential, reference
 
+def WriteBenchmarkCheckpoint(output_folder, run, results, status, elapsed_seconds): #Write in manifest at a checkpoint mid-run
+    total = (len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"]))
+    manifest = {
+        "configuration": run,
+        "results": list(results),
+        "status": status,
+        "completed_combinations": len(results),
+        "total_combinations": total,
+        "elapsed_seconds": elapsed_seconds}
+    output_folder = Path(output_folder)
+    temporary_path = output_folder / "run.json.tmp"
+    manifest_path = output_folder / "run.json"
 
-def RunBenchmarkConfiguration(run, output_folder, progress): #progress is a queue of progress messages
+    #write to different file first before replace in case write fail
+    temporary_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding="utf-8") 
+    temporary_path.replace(manifest_path)
+
+    return manifest
+
+
+
+def RunBenchmarkConfiguration(run, output_folder, progress, stop_event = None): #progress is a queue of progress messages
+    start_time = perf_counter()
     output_folder = Path(output_folder)
     total = len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"])
     completed = 0
     results = []
+    WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = 0.0)
 
     for problem_idx, (name, data) in enumerate(run["problems"].items(), start = 1):
         base_config = SimulationConfig(**data)
@@ -192,10 +215,29 @@ def RunBenchmarkConfiguration(run, output_folder, progress): #progress is a queu
                     "analytical_available": analytical is not None
                     })
                 completed += 1
+                if stop_event is not None and stop_event.is_set(): #Got stopped
+                    elapsed = perf_counter() - start_time
+                    manifest = WriteBenchmarkCheckpoint(
+                        output_folder, run, results,
+                        status="stopped",
+                        elapsed_seconds=elapsed)
+                    progress.put(f"Run stopped: {completed}/{total} combinations completed. Elapsed time: {elapsed:.2f} seconds.")
+                    return manifest
+                WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = perf_counter() - start_time) #Write mid-way
                 progress.put(f"[{completed} / {total}] Finished {name}")
-
+    """
     manifest = {"configuration": run, "results": results}
     (output_folder / "run.json").write_text(json.dumps(manifest, indent = 2, allow_nan = False), encoding = "utf-8")
+    """
+    #Completed so write
+    manifest = WriteBenchmarkCheckpoint(output_folder, run, results, status = "completed", elapsed_seconds = perf_counter() - start_time) 
+
+    #report on the total runtime of this run
+    elapsed = perf_counter() - start_time
+    hours, remainder = divmod(elapsed, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    progress.put(f"Total benchmark time: {int(hours)}h {int(minutes)}m {seconds:.2f}s ({elapsed:.2f} seconds).")
+    
     return manifest
 
 

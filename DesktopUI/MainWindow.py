@@ -6,6 +6,7 @@ from dataclasses import replace, asdict
 from queue import Queue, Empty
 from tempfile import TemporaryDirectory
 from pathlib import Path
+from threading import Event
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -28,6 +29,8 @@ class MainWindow(tk.Tk):
         self.current_results = None
 
         self.CreateTabs()
+
+        self.protocol("WM_DELETE_WINDOW", self.OnClose) #handle closing amid running simulation/ benchmark
 
     def CreateTabs(self):
         self.notebook = ttk.Notebook(self)
@@ -192,6 +195,8 @@ class MainWindow(tk.Tk):
         self.benchmark_console.insert("end", "Ready to configure a benchmark.\n")
         self.benchmark_console.configure(state="disabled")
 
+        self.benchmark_stop_event = None #Event to stop a benchmark
+
         #Left: benchmark inputs
         self.benchmark_config_frame = ttk.LabelFrame(top, text="Benchmark Configuration", padding=8)
         self.benchmark_config_frame.grid(row=0, column=0, sticky="nsew")
@@ -277,11 +282,17 @@ class MainWindow(tk.Tk):
         
         #Button to run benchmark
         self.benchmark_future = None
+        self.benchmark_save_future = None
         self.benchmark_temp_directory = None
         self.benchmark_manifest = None
 
         self.start_benchmark_button = ttk.Button(self.benchmark_run_config_frame, text = "Start run", command = self.OnStartBenchmarkRun)
         self.start_benchmark_button.grid(row = 2, column = 0, columnspan = 3, sticky = "ew", pady = (8, 0))
+
+        #Stop benchmark button
+        self.stop_benchmark_button = ttk.Button(self.benchmark_run_config_frame, text="Stop after current combination",
+                                            command=self.OnStopBenchmarkRun, state="disabled")
+        self.stop_benchmark_button.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(5, 0))
 
         try:
             self.RefreshBenchmarkConfigList()
@@ -293,7 +304,7 @@ class MainWindow(tk.Tk):
         self.benchmark_saved_manifest = None
         self.open_benchmark_folder_button = ttk.Button(self.benchmark_run_config_frame, text = "Open results folder",
                                                        command = self.OpenBenchmarkResultsFolder, state = "disabled")
-        self.open_benchmark_folder_button.grid(row = 3, column = 0, columnspan = 3, sticky = "ew", pady = (5,0))
+        self.open_benchmark_folder_button.grid(row = 4, column = 0, columnspan = 3, sticky = "ew", pady = (5,0))
 
 
         #Result frame has been moved to ReadBenchmark tab
@@ -591,6 +602,7 @@ class MainWindow(tk.Tk):
             return
 
         self.benchmark_progress = Queue()
+        self.benchmark_stop_event = Event()
         self.start_benchmark_button.configure(state = "disabled", text = "Running...")
         self.AppendBenchmarkConsoleMessage(f"Starting run with {len(run["problems"])} problems")
 
@@ -600,7 +612,9 @@ class MainWindow(tk.Tk):
                     RunBenchmarkConfiguration,
                     run,
                     self.benchmark_temp_directory.name, #output path
-                    self.benchmark_progress)
+                    self.benchmark_progress,
+                    self.benchmark_stop_event)
+            self.stop_benchmark_button.configure(state = "normal", text = "Stop after current combination")
         except Exception as e:
             self.benchmark_temp_directory.cleanup()
             self.benchmark_temp_directory = None
@@ -627,6 +641,7 @@ class MainWindow(tk.Tk):
             self.after(100, self.PollBenchmarkRun)
             return
 
+        self.stop_benchmark_button.configure(state = "disabled", text = "Stop after current combination")
         try:
             self.benchmark_manifest = self.benchmark_future.result()
         except Exception as e:
@@ -638,13 +653,22 @@ class MainWindow(tk.Tk):
             self.start_benchmark_button.configure(state="normal", text="Start run")
             return
 
-        self.AppendBenchmarkConsoleMessage(f"Run completed.")
+        if self.benchmark_manifest["status"] == "stopped":
+            self.AppendBenchmarkConsoleMessage("Partial results are ready to save.")
+        else:
+            self.AppendBenchmarkConsoleMessage("Run completed.")
         self.start_benchmark_button.configure(state = "normal", text = "Save / discard completed run", command = self.OfferBenchmarkSave)
         self.OfferBenchmarkSave()
 
     def OfferBenchmarkSave(self): #When save button is pressed
-        save = messagebox.askyesno("Benchmark completed",
-            "Save this run's results?\n\nChoose No to discard the temporary results.", parent=self)
+        stopped = self.benchmark_manifest.get("status") == "stopped" #check if run was stopped
+        completed = len(self.benchmark_manifest["results"])
+        total = self.benchmark_manifest["total_combinations"]
+
+
+        save = messagebox.askyesno("Benchmark stopped" if stopped else "Benchmark completed",
+                    f"{completed}/{total} combinations completed.\n\nSave this run's results and configuration?\n\n"
+                    "Choose No to discard the temporary results.",, parent=self)
         if not save:
             self.AppendBenchmarkConsoleMessage("Completed run discarded.")
             self.ReleaseCompletedBenchmark()
@@ -705,6 +729,7 @@ class MainWindow(tk.Tk):
         try:
             saved_folder = self.benchmark_save_future.result()
         except Exception as e:
+            self.benchmark_save_future = None
             self.AppendBenchmarkConsoleMessage(f"Saving failed: {e}")
             messagebox.showerror("Cannot save results", f"{e}\n\nThe temporary results are available for retry.", parent=self)
             self.start_benchmark_button.configure(state = "normal", text = "Save / discard completed run")
@@ -728,7 +753,13 @@ class MainWindow(tk.Tk):
         manifest = self.benchmark_manifest
         self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
         self.ReleaseCompletedBenchmark()
-        self.DisplayBenchmarkRun(saved_folder, manifest) #Jump to ReadBenchmark after saving
+        if manifest.get("status") == "stopped":
+            self.benchmark_saved_folder = saved_folder
+            self.open_benchmark_folder_button.configure(state="normal")
+            self.AppendBenchmarkConsoleMessage("Partial run saved.")
+
+        else:
+            self.DisplayBenchmarkRun(saved_folder, manifest)
 
     """ NOT NEEDED after result_view was removed from Benchmark tab
     def PositionBenchmarkDivider(self):  
@@ -743,9 +774,11 @@ class MainWindow(tk.Tk):
         except OSError as error:
             self.AppendBenchmarkConsoleMessage(f"Could not fully remove temporary files: {error}")
 
+        self.benchmark_save_future = None
         self.benchmark_temp_directory = None
         self.benchmark_future = None
         self.benchmark_manifest = None
+        self.benchmark_stop_event = None
         self.start_benchmark_button.configure(state="normal", text="Start run", command=self.OnStartBenchmarkRun)
 
     def OpenBenchmarkResultsFolder(self):
@@ -990,7 +1023,14 @@ class MainWindow(tk.Tk):
         return selected, entries, ShowParameters #Get the ShowParameters so I can call it when loading a preset
 
 
+    def OnStopBenchmarkRun(self):
+        #if things are done
+        if self.benchmark_future is None or self.benchmark_future.done() or self.benchmark_stop_event is None:
+            return
 
+        self.benchmark_stop_event.set()
+        self.stop_benchmark_button.configure(state="disabled", text="Stopping after current combination...")
+        self.AppendBenchmarkConsoleMessage("Stop command received. Waiting for the current combination to finish.")
 
 
 
@@ -1451,3 +1491,34 @@ class MainWindow(tk.Tk):
                                     if self.wave_input_mode.get() == "Expression"
                                     else None)
                                 )
+
+
+
+    #Method for handling closing window
+    def OnClose(self):
+        run_pending = (self.benchmark_future is not None and self.benchmark_manifest is None)
+        save_pending = self.benchmark_save_future is not None
+
+        if run_pending or save_pending:
+            messagebox.showinfo("Benchmark busy",
+            "A benchmark is still running or its results are being saved.\n\n"
+            "Please wait until it finishes or stop it before closing the application.", parent=self)
+        return
+
+        if self.benchmark_temp_directory is not None:
+            discard = messagebox.askyesno("Unsaved benchmark results",
+                "The completed benchmark has unsaved results.\n\n"
+                "Discard these results and close?\n\n"
+                "Choose No to return and save them.", parent=self)
+            if not discard:
+                return
+
+            try:
+                self.benchmark_temp_directory.cleanup()
+            except OSError as error:
+                messagebox.showerror("Cannot remove temporary results",
+                    f"{error}\n\nThe application will remain open.", parent=self)
+                return
+
+            self.benchmark_temp_directory = None
+        self.destroy()

@@ -98,7 +98,7 @@ def BuildPotential(config, grid):
 #Getting error when N or T_final / dt is too large, linspace failed.
 #These constraints are arbitrary for now
 MAX_STEPS = 1_000_000
-MAX_GRID_POINTS = 20_000
+MAX_GRID_POINTS = 50_000
 INFINITE_WELL_SSF_MESSAGE = (
     "The current Split-Step Fourier implementation uses periodic Fourier boundary conditions.\n\n"
     "An Infinite Square Well requires the wave function to remain zero "
