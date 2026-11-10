@@ -183,6 +183,16 @@ def RunBenchmarkConfiguration(run, output_folder, progress, stop_event = None): 
 
         for n_idx, n in enumerate(run["N_values"], start = 1):
             for dt_idx, dt in enumerate(run["dt_values"], start = 1):
+
+                if stop_event is not None and stop_event.is_set(): #Got stopped, check before doing the calculation
+                    elapsed = perf_counter() - start_time
+                    manifest = WriteBenchmarkCheckpoint(
+                        output_folder, run, results,
+                        status="stopped",
+                        elapsed_seconds=elapsed)
+                    progress.put(f"Run stopped: {completed}/{total} combinations completed. Elapsed time: {elapsed:.2f} seconds.")
+                    return manifest
+
                 progress.put(f"[{completed + 1} / {total}] Running {name}, N = {n}, dt = {dt:g}")
 
                 config = replace(base_config, N = n, dt = dt)
@@ -215,14 +225,7 @@ def RunBenchmarkConfiguration(run, output_folder, progress, stop_event = None): 
                     "analytical_available": analytical is not None
                     })
                 completed += 1
-                if stop_event is not None and stop_event.is_set(): #Got stopped
-                    elapsed = perf_counter() - start_time
-                    manifest = WriteBenchmarkCheckpoint(
-                        output_folder, run, results,
-                        status="stopped",
-                        elapsed_seconds=elapsed)
-                    progress.put(f"Run stopped: {completed}/{total} combinations completed. Elapsed time: {elapsed:.2f} seconds.")
-                    return manifest
+                
                 WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = perf_counter() - start_time) #Write mid-way
                 progress.put(f"[{completed} / {total}] Finished {name}")
     """

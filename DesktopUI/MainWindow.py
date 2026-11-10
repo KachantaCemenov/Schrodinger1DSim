@@ -668,7 +668,7 @@ class MainWindow(tk.Tk):
 
         save = messagebox.askyesno("Benchmark stopped" if stopped else "Benchmark completed",
                     f"{completed}/{total} combinations completed.\n\nSave this run's results and configuration?\n\n"
-                    "Choose No to discard the temporary results.",, parent=self)
+                    "Choose No to discard the temporary results.", parent=self)
         if not save:
             self.AppendBenchmarkConsoleMessage("Completed run discarded.")
             self.ReleaseCompletedBenchmark()
@@ -715,7 +715,15 @@ class MainWindow(tk.Tk):
         self.benchmark_saved_manifest = manifest
 
         self.benchmark_results_view.LoadRun(folder, manifest)
-        self.read_benchmark_path.set(str(folder))
+
+        #Check if benchmark is completed
+        configuration = manifest["configuration"]
+        total = (len(configuration["problems"]) * len(configuration["N_values"]) * len(configuration["dt_values"]))
+        completed = len(manifest["results"])
+        status = "Completed" if completed == total else "Partial"
+        self.read_benchmark_path.set(
+            f"{folder}\n{status}: {completed}/{total} combinations"
+        )
 
         self.open_benchmark_folder_button.configure(state="normal")
         self.read_benchmark_folder_button.configure(state="normal")
@@ -753,13 +761,7 @@ class MainWindow(tk.Tk):
         manifest = self.benchmark_manifest
         self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
         self.ReleaseCompletedBenchmark()
-        if manifest.get("status") == "stopped":
-            self.benchmark_saved_folder = saved_folder
-            self.open_benchmark_folder_button.configure(state="normal")
-            self.AppendBenchmarkConsoleMessage("Partial run saved.")
-
-        else:
-            self.DisplayBenchmarkRun(saved_folder, manifest)
+        self.DisplayBenchmarkRun(saved_folder, manifest)
 
     """ NOT NEEDED after result_view was removed from Benchmark tab
     def PositionBenchmarkDivider(self):  

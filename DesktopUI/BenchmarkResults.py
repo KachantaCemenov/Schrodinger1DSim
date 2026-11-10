@@ -50,8 +50,12 @@ def ReadBenchmarkManifest(folder):
         raise ValueError("The run contains duplicate N values.")
     if len(set(dt_values)) != len(dt_values):
         raise ValueError("The run contains duplicate dt values.")
-    if not isinstance(results, list) or not results:
-        raise ValueError("The manifest must contain result records.")
+    if not isinstance(results, list):
+        raise ValueError("The manifest results must be a list.")
+
+    status = manifest.get("status", "completed") #"complete" might not be needed here, just put there so I can load my old saves 
+    if status not in ("completed", "stopped"):
+        raise ValueError("Open a completed or deliberately stopped benchmark run.")
 
     expected = set(product(problems, map(str, n_values), map(str, dt_values)))
     found = set()
@@ -76,8 +80,15 @@ def ReadBenchmarkManifest(folder):
             raise ValueError(f"Missing result file: {csv_path}")
         found.add(key)
 
-    if found != expected:
-        raise ValueError("The run is missing some problem/N/dt results.")
+    if status == "completed" and found != expected:
+        raise ValueError("The completed run is missing some results.")
+
+    # Count good configuration and records.
+    manifest["completed_combinations"] = len(found)
+    manifest["total_combinations"] = len(expected)
+
+    # A stop requested at the very end may have produced all results.
+    manifest["status"] = ("completed" if found == expected else "stopped")
 
     return manifest
 
@@ -186,11 +197,12 @@ class BenchmarkResults(ttk.Frame):
         self.table_page = max(0, min(self.table_page + direction, last_page))
         self.RefreshTable()
 
-
+    """
     def LoadRun(self, folder, manifest):
         self.folder = Path(folder)
         self.loaded_path = None
         self.data = None
+
 
         self.records = {(record["problem"], str(record["N"]), str(record["dt"])): record for record in manifest["results"]}
         # (problem, n, dt) : results
@@ -207,9 +219,56 @@ class BenchmarkResults(ttk.Frame):
             self.dropdowns[label].configure(values = choices, state = "readonly")
             self.variables[label].set(choices[0])
         self.ShowSelection()
+    """
+    def LoadRun(self, folder, manifest):
+        self.folder = Path(folder)
+        self.loaded_path = None
+        self.data = None
+        self.table_page = 0
+
+        self.records = {(record["problem"], str(record["N"]), str(record["dt"])): record for record in manifest["results"]}
+
+        for label in self.variables:
+            self.variables[label].set("")
+            self.dropdowns[label].configure(values=(), state="disabled")
+
+        self.RefreshTable()
+        self.axes.clear()
+
+        if not self.records: #Combinations that weren't calculated in the stopped run
+            self.axes.set_title("No completed combinations yet")
+            self.axes.text(0.5, 0.5,
+                "This partial run contains its configuration,\nbut no completed results to inspect.",
+                ha="center", va="center", transform=self.axes.transAxes)
+            self.axes.set_axis_off()
+            self.canvas.draw_idle()
+            return
+
+        self.SetResultChoices("Problem", list(dict.fromkeys(key[0] for key in self.records)))
+        self.SetResultChoices("Quantity", list(self.QUANTITIES))
+        self.ShowSelection()
+
+    def SetResultChoices(self, label, choices):
+        self.dropdowns[label].configure(values=choices, state="readonly" if choices else "disabled")
+        if self.variables[label].get() not in choices:
+            self.variables[label].set(choices[0] if choices else "")
+
+    def UpdateResultChoices(self):
+        problem = self.variables["Problem"].get()
+
+        n_values = list(dict.fromkeys(n for p, n, dt in self.records if p == problem))
+        self.SetResultChoices("N", n_values)
+
+        selected_n = self.variables["N"].get()
+        dt_values = list(dict.fromkeys(dt for p, n, dt in self.records if p == problem and n == selected_n))
+        self.SetResultChoices("dt", dt_values)
 
     #Show the a selected problem in the run
     def ShowSelection(self, event = None):
+        if not self.records: #Only populate valid combinations before read
+            return
+        self.UpdateResultChoices()
+
         problem = self.variables["Problem"].get()
         quantity = self.variables["Quantity"].get()
         n = self.variables["N"].get()
