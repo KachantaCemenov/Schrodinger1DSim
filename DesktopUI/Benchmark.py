@@ -9,15 +9,78 @@ from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 
-from Simulation import BuildGrid, BuildWaveFunction, BuildPotential
-from ComparingMethods.AnalyticalSolutions import FreeGaussianAnalytical,PlaneWaveAnalytical
+from Simulation import BuildGrid, BuildWaveFunction, BuildPotential, INFINITE_WELL_SSF_MESSAGE
+from ComparingMethods.AnalyticalSolutions import (FreeGaussianAnalytical,   #All functions to calculate numerical waves
+                                            PlaneWaveAnalytical,
+                                            HarmonicOscillatorEigenstateAnalytical,
+                                            GaussianHarmonicAnalytical)
 from Simulation import SimulationConfig
 from ComparingMethods.CompareMethods import RunComparison
 
+#Check if the problem has an analytical reference
+def HasBenchmarkReference(config):
+    #These are based on what analytical functions I'm having
+    #MANUALLY CHANGE THESE RETURNS when implement more analytical functions
+    if config.wave_mode != "Preset":
+        return False
+    if config.potential_type == "Free Particle":
+        return config.wave_type in ("Gaussian Packet", "Plane Wave")
+    if config.potential_type != "Harmonic Oscillator":
+        return False
+
+    omega = config.potential_parameters["omega"]
+    if config.wave_type == "Harmonic Oscillator Eigenstate":
+        return bool(np.isclose(config.wave_parameters["omega"], omega, rtol=1e-10, atol=0))
+
+    if config.wave_type == "Gaussian Packet":
+        required_sigma = np.sqrt(config.hbar / (2 * config.mass * omega))
+        return bool(np.isclose(config.wave_parameters["sigma"], required_sigma, rtol=1e-8, atol=0,))
+    return False
+
 def BuildBenchmarkProblem(config):
-    supported_waves = ("Gaussian Packet", "Plane Wave")
-    if config.potential_type != "Free Particle" or config.wave_type not in supported_waves:
-        raise ValueError("Currently only supporting Free particle with Gaussian Packet or Plane Wave")
+    """
+    problem = (config.wave_type, config.potential_type)
+
+    supported = {("Gaussian Packet", "Free Particle"),
+                ("Plane Wave", "Free Particle"),
+                ("Gaussian Packet", "Harmonic Oscillator"),
+                ("Harmonic Oscillator Eigenstate", "Harmonic Oscillator"),}
+
+    if problem not in supported:
+        raise ValueError("This wave/potential combination has no supported benchmark reference yet.")
+
+    #Check same omega in HO eigenstate or correct sigma in Gaussian in HO
+    parameters = config.wave_parameters
+    potential_parameters = config.potential_parameters
+
+    if config.potential_type == "Harmonic Oscillator":
+        omega = potential_parameters["omega"]
+        if not np.isfinite(omega) or omega <= 0:
+            raise ValueError("Potential omega must be finite and positive.")
+
+        if config.wave_type == "Harmonic Oscillator Eigenstate":
+            if not np.isclose(parameters["omega"], omega, rtol=1e-10, atol=0):
+                raise ValueError("The eigenstate reference requires matching wave and potential omega values.")
+        else:
+            required_sigma = np.sqrt(config.hbar / (2 * config.mass * omega))
+            if not np.isclose(parameters["sigma"], required_sigma, rtol=1e-8, atol=0):
+                raise ValueError(f"The Gaussian harmonic reference requires a coherent state with sigma = {required_sigma:.16g}.")
+    """
+
+    if config.potential_type == "Infinite Square Well":
+        raise ValueError("A benchmark run compares and calculate both Crank–Nicolson and SSF. "
+                    "Infinite Square Well is currently available through Crank–Nicolson in Simulation.\n\n"
+                    + INFINITE_WELL_SSF_MESSAGE)
+
+    problem = (config.wave_type, config.potential_type)
+    parameters = config.wave_parameters
+    potential_parameters = config.potential_parameters
+
+    if config.potential_type == "Harmonic Oscillator":
+        omega = potential_parameters["omega"]
+        if not np.isfinite(omega) or omega <= 0:
+            raise ValueError("Potential omega must be finite and positive.")
+
 
     grid = BuildGrid(config)
     wave = BuildWaveFunction(config, grid)
@@ -25,20 +88,26 @@ def BuildBenchmarkProblem(config):
 
     if not np.all(np.isfinite(wave.psi)):
         raise ValueError("Initial wave contains infinite values.")
+    if not np.all(np.isfinite(potential.values)):
+        raise ValueError("The potential contains invalid values.")
 
+    if not HasBenchmarkReference(config):
+        return grid, wave, potential, None #No need to configure the reference return in this case
+
+    #Configure the analytical function (reference) to return
     parameters = config.wave_parameters
-    
-    if config.wave_type == "Plane Wave":
-        analytical = partial(  #analytical here is PlaneWaveAnalytical but with frozen parameters
+    if problem == ("Plane Wave", "Free Particle"):
+        raw_reference = partial(
             PlaneWaveAnalytical,
-            initial_wave = wave.Copy(),
-            grid = grid,
-            n = parameters["n"],
-            mass = config.mass,
-            hbar = config.hbar
-            )
-    else:
-        raw_analytical = partial(  
+            initial_wave=wave.Copy(),
+            grid=grid,
+            n=parameters["n"],
+            mass=config.mass,
+            hbar=config.hbar,
+        )
+
+    elif problem == ("Gaussian Packet", "Free Particle"):
+        raw_reference = partial(
             FreeGaussianAnalytical,
             grid=grid,
             x0=parameters["x0"],
@@ -48,17 +117,34 @@ def BuildBenchmarkProblem(config):
             hbar=config.hbar,
         )
 
-        #Save the norm of the initial analytical for normalization 
-        initial = raw_analytical(t = 0)
-        initial_norm = np.sqrt(np.sum(np.abs(initial) ** 2) * grid.dx)
-        if not np.isfinite(initial_norm) or initial_norm <= 0:
-            raise ValueError("Cannot normalize the analytical initial wave.")
+    elif config.wave_type == "Harmonic Oscillator Eigenstate":
+        raw_reference = partial(
+            HarmonicOscillatorEigenstateAnalytical,
+            initial_wave=wave.Copy(),
+            n=parameters["n"],
+            omega=potential_parameters["omega"],
+            hbar=config.hbar,
+        )
 
-        def analytical(t):
-            return raw_analytical(t = t) / initial_norm
+    else:
+        raw_reference = partial(
+            GaussianHarmonicAnalytical,
+            grid=grid,
+            x0=parameters["x0"],
+            k0=parameters["k0"],
+            mass=config.mass,
+            omega=potential_parameters["omega"],
+            hbar=config.hbar,
+        )
+
+    #Save the norm of the initial analytical for normalization 
+    initial = raw_reference(t = 0)
+    initial_norm = np.sqrt(np.sum(np.abs(initial) ** 2) * grid.dx)
+    if not np.isfinite(initial_norm) or initial_norm <= 0:
+        raise ValueError("Cannot normalize the analytical initial wave.")
 
     def reference(t):
-        return analytical(t=t) #Because RunComparison call analytical(0) that won't fit the argument list of partial()
+        return raw_reference(t = t) / initial_norm
 
     return grid, wave, potential, reference
 
@@ -102,7 +188,8 @@ def RunBenchmarkConfiguration(run, output_folder, progress): #progress is a queu
                     "problem": name,
                     "N": n,
                     "dt": dt,
-                    "folder": relative_folder.as_posix()
+                    "folder": relative_folder.as_posix(),
+                    "analytical_available": analytical is not None
                     })
                 completed += 1
                 progress.put(f"[{completed} / {total}] Finished {name}")

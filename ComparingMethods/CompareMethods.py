@@ -48,7 +48,12 @@ def RunComparison(setting_folder : Path,
                                 CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder, steps=steps)
 
 
+def CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time):
+    if analytical is None:
+        return "N/A", "N/A" #When there is no analytical implemented
 
+    exact_psi = analytical(time)
+    return (L2Error(grid, wave_cn.psi, exact_psi),L2Error(grid, wave_ssf.psi, exact_psi))
 
 def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                               wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
@@ -68,10 +73,13 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                              "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy", "CN_L2Error", "SSF_L2Error"])
 
 
+            """
             #Analytical psi at t = 0
             exact_psi = analytical(0)
             cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
             ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
+            """
+            cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time=0)
 
             #Write initial state
             writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
@@ -86,10 +94,13 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
 
                 time = (step + 1) * dt  #step go from 0 so +1
 
+                """
                 #Calculate L^2 errors for both CN and SSF
                 exact_psi = analytical(time)
                 cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
                 ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
+                """
+                cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
                 writer.writerow([
                     step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 

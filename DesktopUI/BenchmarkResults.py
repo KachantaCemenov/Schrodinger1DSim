@@ -172,7 +172,7 @@ class BenchmarkResults(ttk.Frame):
         page = self.data.iloc[start:end][["time", cn_column, ssf_column]].copy()
         page.columns = ["Time", "Crank–Nicolson", "SSF"]
 
-        formatted = page.map(lambda value: f"{value:.16g}") #16 significant digits
+        formatted = page.map(lambda value: "N/A" if pd.isna(value) else f"{value:.16g}") #16 significant digits
         self.result_table.LoadDataFrame(formatted)
 
         self.table_page_text.set(f"Rows {start + 1}–{end} of {len(self.data)}")
@@ -248,7 +248,22 @@ class BenchmarkResults(ttk.Frame):
             messagebox.showerror("Cannot display benchmark results", str(e), parent=self)
             return
 
+        #If L2 error is selected but not available
+        if quantity == "L2 error" and self.data[list(columns)].isna().all().all():
+            self.axes.clear()
+            self.axes.set_title(f"{problem} — N={n}, dt={dt}")
+            self.axes.text(0.5,0.5,"L2 error is unavailable.\n"
+                    "This result contains no analytical-reference error values.", ha="center", va="center",
+                    transform=self.axes.transAxes)
+            self.axes.set_axis_off()
+            self.canvas.draw_idle()
+            self.RefreshTable()
+            return
+
+
+
         self.axes.clear()
+        self.axes.set_axis_on()
         self.axes.plot(
             self.data["time"],
             self.data[columns[0]],

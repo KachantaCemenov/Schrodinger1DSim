@@ -97,9 +97,15 @@ def BuildPotential(config, grid):
 
 #Getting error when N or T_final / dt is too large, linspace failed.
 #These constraints are arbitrary for now
-MAX_STEPS = 100_000
+MAX_STEPS = 1_000_000
 MAX_GRID_POINTS = 20_000
-
+INFINITE_WELL_SSF_MESSAGE = (
+    "The current Split-Step Fourier implementation uses periodic Fourier boundary conditions.\n\n"
+    "An Infinite Square Well requires the wave function to remain zero "
+    "at its walls. This SSF implementation does not enforce those boundary conditions.\n\n"
+    "Use Crank–Nicolson in the Simulation tab for this potential."
+    #In future put a new line here pointing to a section in the Help page
+)
 
 def RunSimulation(config):
     #Displayed values
@@ -145,7 +151,7 @@ def RunSimulation(config):
 
     if is_well:
         if config.solver != "Crank-Nicolson":
-            raise ValueError("Only Crank-Nicolson is currently supported for Infinite Square Well potential.")
+            raise ValueError(INFINITE_WELL_SSF_MESSAGE)
 
         params = config.potential_parameters
         left = params["x_left"]

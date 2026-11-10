@@ -9,13 +9,13 @@ from pathlib import Path
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
-from Simulation import SimulationConfig
+from Simulation import SimulationConfig, INFINITE_WELL_SSF_MESSAGE
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
             CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
-from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults
+from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults, HasBenchmarkReference
 from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
 
 class MainWindow(tk.Tk):
@@ -569,6 +569,22 @@ class MainWindow(tk.Tk):
 
         try: 
             run = self.BuildBenchmarkRunConfig()
+
+            #Handle problems without analytical reference
+            missing_references = [name for name, data in run["problems"].items() 
+                                  if not HasBenchmarkReference(SimulationConfig(**data))]
+            if missing_references:
+                problem_list = "\n".join(f"- {name}" for name in missing_references)
+                proceed = messagebox.askyesno("Analytical reference unavailable",
+                    "No analytical reference is implemented for these problem settings:\n\n"
+                    f"{problem_list}\n\n"
+                    "Their CN and SSF L2 error columns will contain N/A. L2 error graphs and L2-based accuracy comparisons will be unavailable.\n\n"
+                    "Norm, position, momentum, energy, and execution time will still be calculated and available for inspection and comparison.\n\n"
+                    "Proceed with this run?", parent = self)
+                if not proceed:
+                    return
+
+
             self.benchmark_temp_directory = TemporaryDirectory(prefix = "SchorodingerBenchmark_") #temporary until user save
         except (OSError, ValueError) as e:
             messagebox.showerror("Cannot start benchmark", str(e), parent = self)
@@ -1313,6 +1329,11 @@ class MainWindow(tk.Tk):
 
         except (ValueError, KeyError) as error:
             messagebox.showerror("Invalid Input",str(error))
+            return
+
+        if config.potential_type == "Infinite Square Well" and config.solver == "SSF":
+            messagebox.showwarning(
+                "Infinite Square Well requires Crank–Nicolson", INFINITE_WELL_SSF_MESSAGE, parent=self)
             return
         
         self.run_button.configure(state="disabled", text="Running...")

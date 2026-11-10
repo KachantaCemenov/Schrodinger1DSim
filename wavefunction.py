@@ -167,7 +167,8 @@ class WaveFunction:
         x = grid.x
 
         #bunch of constants
-        const = np.sqrt(mass * omega / (hbar * 2)) * (x - center)
+        #const = np.sqrt(mass * omega / (hbar * 2)) * (x - center)
+        const = np.sqrt(mass * omega / hbar) * (x - center)
 
         #normalization term
         normalization = (mass * omega / (hbar * np.pi))**(1/4) * (1 / np.sqrt(2**n * factorial(n)))
