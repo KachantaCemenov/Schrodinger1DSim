@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-def ReadBenchmarkManifest(folder):
+def ReadBenchmarkManifest(folder, *, allow_running = False):
     folder = Path(folder).resolve()
 
     with (folder / "run.json").open("r", encoding = "utf-8") as f:
@@ -54,7 +54,10 @@ def ReadBenchmarkManifest(folder):
         raise ValueError("The manifest results must be a list.")
 
     status = manifest.get("status", "completed") #"complete" might not be needed here, just put there so I can load my old saves 
-    if status not in ("completed", "stopped"):
+    allowed_statuses = {"completed", "stopped"}
+    if allow_running:                           #Running files are written to a recovery folder
+        allowed_statuses.add("running")
+    if status not in allowed_statuses:
         raise ValueError("Open a completed or deliberately stopped benchmark run.")
 
     expected = set(product(problems, map(str, n_values), map(str, dt_values)))

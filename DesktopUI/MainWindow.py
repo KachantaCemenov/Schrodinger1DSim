@@ -1,11 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, font as tkfont
 import os
 import math
 from dataclasses import replace, asdict
 from queue import Queue, Empty
 from tempfile import TemporaryDirectory
-from BenchmarkRecovery import BenchmarkWorkingDirectory
 from pathlib import Path
 from threading import Event
 
@@ -21,10 +20,21 @@ from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguratio
 from Benchmark import (BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults, 
                     HasBenchmarkReference, ResumeBenchmarkConfiguration,)
 from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
+from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock, 
+                        ListRecoveryFolders, IsRecoveryFolder, DeleteRecoveryFolder)
 
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        try:
+            self.recovery_lock = AcquireRecoveryLock()
+        except RuntimeError as error:
+            messagebox.showerror("Simulator already open", str(error), parent=self)
+            self.destroy()
+            raise SystemExit(1)
+
+        self.recovery_window = None
 
         self.title("1D Schrodinger Equation Simulator")
 
@@ -34,6 +44,7 @@ class MainWindow(tk.Tk):
         self.CreateTabs()
 
         self.protocol("WM_DELETE_WINDOW", self.OnClose) #handle closing amid running simulation/ benchmark
+        self.after_idle(self.CheckBenchmarkRecovery)
 
     def CreateTabs(self):
         self.notebook = ttk.Notebook(self)
@@ -165,6 +176,9 @@ class MainWindow(tk.Tk):
                                                         state="disabled")
         self.read_benchmark_folder_button.pack(side = "left")
 
+        #Recover disrupted benchmark button
+        ttk.Button(toolbar, text = "Recover runs", command = self.ShowBenchmarkRecovery).pack(side = "left", padx = (8,0))
+
         #resume benchmark button
         self.resume_benchmark_button = ttk.Button(toolbar, text="Resume loaded run", 
                                                   command=self.OnResumeBenchmarkRun, state="disabled")
@@ -289,6 +303,8 @@ class MainWindow(tk.Tk):
         #Button to load benchmark
         ttk.Button(self.benchmark_run_config_frame, text = "Load", command = self.OnLoadBenchmarkConfig).grid(row = 1, column = 2, padx = (8,0), pady = 5)
         
+
+
         #Button to run benchmark
         self.benchmark_future = None
         self.benchmark_save_future = None
@@ -1049,21 +1065,29 @@ class MainWindow(tk.Tk):
         self.AppendBenchmarkConsoleMessage("Stop command received. Waiting for the current combination to finish.")
 
     
-    def OnResumeBenchmarkRun(self):
+    def OnResumeBenchmarkRun(self, source_folder = None):
         # Block resuming while results await save/discard.
         if self.benchmark_future is not None:
             messagebox.showinfo("Benchmark busy",
                 "Finish the current run and save or discard its results first.", parent=self)
             return
-
+        """
         if self.benchmark_saved_folder is None:
             return
         source_folder = Path(self.benchmark_saved_folder)
+        """
+        if source_folder is None:
+            source_folder = self.benchmark_saved_folder
+        if source_folder is None:
+            return
+
+        source_folder = Path(source_folder)
+        recovering = IsRecoveryFolder(source_folder)
 
         try:
             #Read the saved file
-            manifest = ReadBenchmarkManifest(source_folder)
-            if manifest["status"] == "completed":
+            manifest = ReadBenchmarkManifest(source_folder, allow_running = recovering)
+            if manifest["status"] == "completed" and not recovering:
                 messagebox.showinfo("Run already completed",
                     "No missing combination to continue.", parent=self)
                 return
@@ -1225,6 +1249,225 @@ class MainWindow(tk.Tk):
 
         for name, entry in self.potential_entries.items():
             fill(entry, config.potential_parameters[name])
+
+    #Methods for recoveing disrupted benchmark runs
+    def CheckBenchmarkRecovery(self):
+        try:
+            folders = ListRecoveryFolders()
+        except OSError as e:
+            messagebox.showerror("Cannot check recovery files", str(e), parent = self)
+            return
+        if folders:
+            self.ShowBenchmarkRecovery()
+
+    def ShowBenchmarkRecovery(self):
+        if self.benchmark_future is not None:
+            messagebox.showinfo("Benchmark busy", "Finish current run and save or discard first.", parent = self)
+            return
+
+        if self.recovery_window is not None and self.recovery_window.winfo_exists():
+            self.recovery_window.lift()
+            return
+
+        try:
+            folders = ListRecoveryFolders()
+        except OSError as e:
+            messagebox.showerror("Cannot list recovery files", str(e), parent = self)
+            return
+        
+        if not folders:
+            messagebox.showinfo("Benchmark recovery", "No unfinished runs were found.", parent = self)
+            return
+        window = tk.Toplevel(self)
+        self.recovery_window = window
+        window.title("Recover benchmark runs")
+        window.geometry("850x380")
+        window.transient(self)
+        ttk.Label(window, text = "Choose a recovery folder. Resume calculates missing combinations.\nFor a completed run, Resume / save opens the save workflow.",
+                    padding = 10).pack(fill = "x")
+        
+
+        tree = ttk.Treeview(window, columns=("folder", "progress"), show="headings", selectmode="browse")
+        tree.heading("folder", text="Recovery folder")
+        tree.heading("progress", text="Checkpoint")
+        tree.column("folder", width=380)
+        tree.column("progress", width=400)
+        tree.pack(fill="both", expand=True, padx=10)
+
+        #Make tooltips for long checkpoint entries
+        tooltip = None
+        tooltip_item = None
+
+        font_name = ttk.Style(tree).lookup("Treeview", "font")
+        checkpoint_font = tkfont.Font(root = tree, font = font_name or "TkDefaultFont")
+        def HideTooltip(event=None):
+            nonlocal tooltip, tooltip_item
+            if tooltip is not None:
+                tooltip.destroy()
+                tooltip = None
+            tooltip_item = None
+
+        def ShowCheckpointTooltip(event):
+            nonlocal tooltip, tooltip_item
+
+            item = tree.identify_row(event.y)
+            column = tree.identify_column(event.x)
+
+            if not item or column != "#2":
+                HideTooltip()
+                return
+
+            bounds = tree.bbox(item, "progress")
+            if not bounds:
+                HideTooltip()
+                return
+
+            text = tree.set(item, "progress")
+            cell_x, _, cell_width, _ = bounds
+            visible_width = min(cell_width, tree.winfo_width() - cell_x)
+
+            # No tooltip needed when whole message fits
+            if checkpoint_font.measure(text) <= visible_width - 12:
+                HideTooltip()
+                return
+
+            if tooltip_item == item:
+                return
+
+            HideTooltip()
+            tooltip_item = item
+            tooltip = tk.Toplevel(window)
+            tooltip.withdraw()
+            tooltip.overrideredirect(True)
+
+            tk.Label(tooltip, text=text, justify="left", wraplength=500, background="#fff8d6", 
+                     foreground="black", relief="solid", borderwidth=1, padx=8, pady=6).pack()
+
+            tooltip.update_idletasks()
+
+            x = event.x_root + 16
+            y = event.y_root + 20
+
+            # Keep the tooltip inside the recovery window.
+            right = window.winfo_rootx() + window.winfo_width()
+            bottom = window.winfo_rooty() + window.winfo_height()
+
+            x = max(window.winfo_rootx(), min(x, right - tooltip.winfo_reqwidth()))
+            if y + tooltip.winfo_reqheight() > bottom:
+                y = max(window.winfo_rooty(), event.y_root - tooltip.winfo_reqheight() - 8)
+
+            tooltip.geometry(f"+{x}+{y}")
+            tooltip.deiconify()
+
+
+
+        entries = {} #Look into the runs
+        for index, folder in enumerate(folders):
+            item_id = str(index)
+            entries[item_id] = folder
+            try:
+                manifest = ReadBenchmarkManifest(folder, allow_running=True)
+                description = (f"{manifest['completed_combinations']} / {manifest['total_combinations']} completed")
+            except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
+                description = f"Cannot recover: {error}"
+
+            tree.insert("", "end", iid=item_id, values=(folder.name, description))
+
+        def SelectedFolder():
+            selection = tree.selection()
+            return entries[selection[0]] if selection else None
+
+        def CloseWindow():
+            HideTooltip()
+            window.grab_release()
+            window.destroy()
+            self.recovery_window = None
+
+        def Inspect():
+            folder = SelectedFolder()
+            if folder is None:
+                return
+            try:
+                manifest = ReadBenchmarkManifest(folder, allow_running=True)
+            except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
+                messagebox.showerror("Cannot inspect checkpoint", str(error), parent=window)
+                return
+            CloseWindow()
+            self.DisplayBenchmarkRun(folder, manifest)
+
+        def Resume():
+            folder = SelectedFolder()
+            if folder is None:
+                return
+            CloseWindow()
+            self.OnResumeBenchmarkRun(source_folder=folder)
+
+        def DeleteItems(item_ids):
+            HideTooltip()
+            errors = []
+
+            for item_id in item_ids:
+                folder = entries[item_id]
+                try:
+                    DeleteRecoveryFolder(folder)
+                except (OSError, ValueError) as error:
+                    errors.append(f"{folder.name}: {error}")
+                    continue
+                # Clear the viewer if its source was deleted.
+                if self.benchmark_saved_folder is not None and Path(self.benchmark_saved_folder).resolve() == folder.resolve():
+                    self.benchmark_saved_folder = None
+                    self.benchmark_saved_manifest = None
+                    self.benchmark_results_view.LoadRun(folder, {"results": []})
+                    self.read_benchmark_path.set("No run loaded.")
+                    self.resume_benchmark_button.configure(state="disabled")
+                    self.open_benchmark_folder_button.configure(state="disabled")
+                    self.read_benchmark_folder_button.configure(state="disabled")
+
+                tree.delete(item_id)
+                del entries[item_id]
+
+            if errors:
+                messagebox.showerror("Some recovery folders could not be deleted","\n\n".join(errors), parent=window)
+
+            remaining = tree.get_children()
+            if remaining:
+                tree.selection_set(remaining[0])
+            else:
+                CloseWindow()
+
+        def Delete():
+            selection = tree.selection()
+            if not selection:
+                return
+            folder = entries[selection[0]]
+            if messagebox.askyesno("Delete recovery files?", f"Permanently delete this recovery folder?\n\n{folder}", parent=window):
+                DeleteItems(list(selection))
+
+        def DeleteAll():
+            item_ids = list(tree.get_children())
+            if not item_ids:
+                return
+
+            if messagebox.askyesno("Delete all recovery files?",
+                f"Permanently delete all {len(item_ids)} recovery folders shown in this window?\n\n"
+                "This includes any completed results stored in them.\nSeparately saved result folders will not be deleted.", parent=window):
+                DeleteItems(item_ids)
+
+        buttons = ttk.Frame(window, padding=10)
+        buttons.pack(fill="x")
+
+        ttk.Button(buttons, text="Resume / save", command = Resume).pack(side = "left")
+        ttk.Button(buttons, text="Inspect", command = Inspect).pack(side = "left", padx = 8)
+        ttk.Button(buttons, text="Delete", command = Delete).pack(side = "left")
+        ttk.Button(buttons, text="Delete all", command = DeleteAll).pack(side = "left", padx = 8)
+        ttk.Button(buttons, text="Later", command = CloseWindow).pack(side = "right")
+
+        tree.selection_set(tree.get_children()[0])
+        window.protocol("WM_DELETE_WINDOW", CloseWindow)
+        window.grab_set()
+
+
+
 
 
     #Method for the wave input frame --------------------
