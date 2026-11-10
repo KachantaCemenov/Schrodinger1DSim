@@ -5,8 +5,10 @@ import math
 from dataclasses import replace, asdict
 from queue import Queue, Empty
 from tempfile import TemporaryDirectory
+from BenchmarkRecovery import BenchmarkWorkingDirectory
 from pathlib import Path
 from threading import Event
+
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -603,7 +605,8 @@ class MainWindow(tk.Tk):
                     return
 
 
-            self.benchmark_temp_directory = TemporaryDirectory(prefix = "SchorodingerBenchmark_") #temporary until user save
+            #self.benchmark_temp_directory = TemporaryDirectory(prefix = "SchorodingerBenchmark_") #temporary until user save
+            self.benchmark_temp_directory = BenchmarkWorkingDirectory()
         except (OSError, ValueError) as e:
             messagebox.showerror("Cannot start benchmark", str(e), parent = self)
             return
@@ -652,14 +655,20 @@ class MainWindow(tk.Tk):
         try:
             self.benchmark_manifest = self.benchmark_future.result()
         except Exception as e:
-            self.AppendBenchmarkConsoleMessage(f"Run failed: {e}")
-            messagebox.showerror("Benchmark failed", str(e), parent=self)
-            self.benchmark_temp_directory.cleanup()
+            #Run fails, reset variables except cleaning the temp_directory  
+            recovery_folder = self.benchmark_temp_directory.name
+            self.AppendBenchmarkConsoleMessage(f"Run failed: {e}\nRecovery files retained at \n{recovery_folder}")
+            
             self.benchmark_temp_directory = None
             self.benchmark_future = None
-            self.start_benchmark_button.configure(state="normal", text="Start run")
-            return
+            self.benchmark_manifest = None
+            self.benchmark_stop_event = None
 
+            self.start_benchmark_button.configure(state="normal", text="Start run", command = self.OnStartBenchmarkRun)
+
+            messagebox.showerror("Benchmark failed", f"{str(e)}\n\nCompleted checkpoints have been retained at\n{recovery_folder}", parent=self)
+            return
+            
         if self.benchmark_manifest["status"] == "stopped":
             self.AppendBenchmarkConsoleMessage("Partial results are ready to save.")
         else:
@@ -1069,7 +1078,9 @@ class MainWindow(tk.Tk):
                 for dt in run["dt_values"]:
                     self.BenchmarkStepCheck(config.T_final, dt)
 
-            self.benchmark_temp_directory = TemporaryDirectory(prefix="SchrodingerBenchmark_")
+            #self.benchmark_temp_directory = TemporaryDirectory(prefix="SchrodingerBenchmark_")
+            self.benchmark_temp_directory = BenchmarkWorkingDirectory()
+
 
         except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
             messagebox.showerror("Cannot resume benchmark", str(error), parent=self)
