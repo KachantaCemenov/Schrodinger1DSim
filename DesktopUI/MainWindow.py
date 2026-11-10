@@ -15,8 +15,9 @@ from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
-            CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
-from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults, HasBenchmarkReference
+                    CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
+from Benchmark import (BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults, 
+                    HasBenchmarkReference, ResumeBenchmarkConfiguration,)
 from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
 
 class MainWindow(tk.Tk):
@@ -161,6 +162,12 @@ class MainWindow(tk.Tk):
                                                         command=self.OpenBenchmarkResultsFolder,
                                                         state="disabled")
         self.read_benchmark_folder_button.pack(side = "left")
+
+        #resume benchmark button
+        self.resume_benchmark_button = ttk.Button(toolbar, text="Resume loaded run", 
+                                                  command=self.OnResumeBenchmarkRun, state="disabled")
+        self.resume_benchmark_button.pack(side="left", padx=(8, 0))
+
         self.read_benchmark_path = tk.StringVar(value = "Open a saved run folder or save a new benchmark run.")
         ttk.Label(toolbar, textvariable = self.read_benchmark_path, wraplength = 650).pack(side = "left", padx = 12)
         self.benchmark_results_view = BenchmarkResults(self.read_benchmark_tab)
@@ -720,6 +727,10 @@ class MainWindow(tk.Tk):
         configuration = manifest["configuration"]
         total = (len(configuration["problems"]) * len(configuration["N_values"]) * len(configuration["dt_values"]))
         completed = len(manifest["results"])
+
+        #open up the resume button if the benchmark is incompleted
+        self.resume_benchmark_button.configure(state="normal" if completed < total else "disabled")
+
         status = "Completed" if completed == total else "Partial"
         self.read_benchmark_path.set(
             f"{folder}\n{status}: {completed}/{total} combinations"
@@ -955,9 +966,6 @@ class MainWindow(tk.Tk):
 
         return config, n_values, dt_values
 
-
-
-
     def PreviewBenchmarkSweep(self):
         try:
             config, n_values, dt_values = self.BuildBenchmarkConfig()
@@ -984,9 +992,6 @@ class MainWindow(tk.Tk):
         console.see("end") #scroll down to "end" (tk.END)
         console.configure(state="disabled")
         
-
-
-
     def CreateBenchmarkPresetSection(self, title, definitions, row):
         frame = ttk.LabelFrame(self.benchmark_config_frame, text=title, padding= 6)
         frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10,0))
@@ -1034,6 +1039,70 @@ class MainWindow(tk.Tk):
         self.stop_benchmark_button.configure(state="disabled", text="Stopping after current combination...")
         self.AppendBenchmarkConsoleMessage("Stop command received. Waiting for the current combination to finish.")
 
+    
+    def OnResumeBenchmarkRun(self):
+        # Block resuming while results await save/discard.
+        if self.benchmark_future is not None:
+            messagebox.showinfo("Benchmark busy",
+                "Finish the current run and save or discard its results first.", parent=self)
+            return
+
+        if self.benchmark_saved_folder is None:
+            return
+        source_folder = Path(self.benchmark_saved_folder)
+
+        try:
+            #Read the saved file
+            manifest = ReadBenchmarkManifest(source_folder)
+            if manifest["status"] == "completed":
+                messagebox.showinfo("Run already completed",
+                    "No missing combination to continue.", parent=self)
+                return
+            run = manifest["configuration"]
+            
+            for n in run["N_values"]:
+                if not 3 <= n <= MAX_GRID_POINTS:
+                    raise ValueError(f"N={n} is outside current supported range: 3-{MAX_GRID_POINTS}")
+            
+            for data in run["problems"].values():
+                config = SimulationConfig(**data)
+                for dt in run["dt_values"]:
+                    self.BenchmarkStepCheck(config.T_final, dt)
+
+            self.benchmark_temp_directory = TemporaryDirectory(prefix="SchrodingerBenchmark_")
+
+        except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
+            messagebox.showerror("Cannot resume benchmark", str(error), parent=self)
+            return
+
+        self.benchmark_manifest = None
+        self.benchmark_progress = Queue()
+        self.benchmark_stop_event = Event()
+
+        self.start_benchmark_button.configure(state = "disabled", text = "Resuming...")
+
+        worker = None
+        try: #resume the run
+            worker = ThreadPoolExecutor(max_workers=1)
+            self.benchmark_future = worker.submit(ResumeBenchmarkConfiguration,
+                                                source_folder,
+                                                self.benchmark_temp_directory.name,
+                                                manifest,
+                                                self.benchmark_progress,
+                                                self.benchmark_stop_event)
+        except Exception as e:
+            self.ReleaseCompletedBenchmark() #reset everything
+            messagebox.showerror("Cannot start resume", str(e), parent=self)
+            return
+        finally:
+            if worker is not None:
+                worker.shutdown(wait=False)
+
+        #Allow stopping midrun, again
+        self.stop_benchmark_button.configure(state="normal", text="Stop after current combination")
+        self.AppendBenchmarkConsoleMessage(f"Resuming saved run:\n{source_folder}")
+        self.notebook.select(self.benchmark_tab)
+        self.after(100, self.PollBenchmarkRun)
 
 
 
@@ -1208,6 +1277,7 @@ class MainWindow(tk.Tk):
         self.wave_expression_entry = ttk.Entry(self.wave_expression_frame)
 
         self.wave_expression_entry.pack(fill="x",padx=5,pady=5)
+
     def OnWaveInputModeChanged(self):
 
         mode = self.wave_input_mode.get()

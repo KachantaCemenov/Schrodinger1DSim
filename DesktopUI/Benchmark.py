@@ -170,78 +170,144 @@ def WriteBenchmarkCheckpoint(output_folder, run, results, status, elapsed_second
 
 
 
-def RunBenchmarkConfiguration(run, output_folder, progress, stop_event = None): #progress is a queue of progress messages
-    start_time = perf_counter()
-    output_folder = Path(output_folder)
-    total = len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"])
-    completed = 0
-    results = []
-    WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = 0.0)
+def RunBenchmarkConfiguration(run, output_folder, progress, 
+                              stop_event = None, resume_manifest = None): #progress is a queue of progress messages
+        start_time = perf_counter()
+        output_folder = Path(output_folder)
+        total = (len(run["problems"]) * len(run["N_values"]) * len(run["dt_values"]))
 
-    for problem_idx, (name, data) in enumerate(run["problems"].items(), start = 1):
-        base_config = SimulationConfig(**data)
+        #checked if the loaded manifest was stopped
+        if resume_manifest is None:
+            results = []
+            previous_elapsed = 0.0
+        else:
+            results = [dict(record) for record in resume_manifest["results"]]
+            previous_elapsed = float(resume_manifest.get("elapsed_seconds", 0.0))
+            if not np.isfinite(previous_elapsed) or previous_elapsed < 0:
+                raise ValueError("Saved elapsed time must be finite and nonnegative.")
 
-        for n_idx, n in enumerate(run["N_values"], start = 1):
-            for dt_idx, dt in enumerate(run["dt_values"], start = 1):
+        completed = len(results)
+        completed_keys = {(record["problem"], str(record["N"]), str(record["dt"])) for record in results}
 
-                if stop_event is not None and stop_event.is_set(): #Got stopped, check before doing the calculation
-                    elapsed = perf_counter() - start_time
-                    manifest = WriteBenchmarkCheckpoint(
-                        output_folder, run, results,
-                        status="stopped",
-                        elapsed_seconds=elapsed)
-                    progress.put(f"Run stopped: {completed}/{total} combinations completed. Elapsed time: {elapsed:.2f} seconds.")
-                    return manifest
+        def TotalElapsed():
+            return previous_elapsed + perf_counter() - start_time
 
-                progress.put(f"[{completed + 1} / {total}] Running {name}, N = {n}, dt = {dt:g}")
+        WriteBenchmarkCheckpoint(output_folder, run, results, status="running", elapsed_seconds=previous_elapsed,)
 
-                config = replace(base_config, N = n, dt = dt)
+        if resume_manifest is not None:
+            progress.put(f"Resuming: {completed}/{total} combinations already completed; {total - completed} remaining.")
 
-                grid, wave, potential, analytical = BuildBenchmarkProblem(config)
+        for problem_idx, (name, data) in enumerate(run["problems"].items(), start = 1):
+            base_config = SimulationConfig(**data)
 
-                relative_folder = Path(f"problem_{problem_idx:03d}") / f"N_{n_idx:03d}_dt_{dt_idx:03d}"
-                setting_folder = output_folder / relative_folder
-                setting_folder.mkdir(parents = True, exist_ok = False)
+            for n_idx, n in enumerate(run["N_values"], start = 1):
+                for dt_idx, dt in enumerate(run["dt_values"], start = 1):
 
-                RunComparison(
-                    setting_folder = setting_folder,
-                    N = n,
-                    dt = dt,
-                    T_final = config.T_final,
-                    grid = grid,
-                    wave_func = wave,
-                    potential = potential,
-                    analytical = analytical,
-                    mass = config.mass,
-                    hbar = config.hbar,
-                    steps = round(config.T_final / dt)
-                    )
+                    #check the combination is already done in case manifest is loaded from a stopped run
+                    key = (name, str(n), str(dt))
+                    if key in completed_keys:
+                        continue
 
-                results.append({
-                    "problem": name,
-                    "N": n,
-                    "dt": dt,
-                    "folder": relative_folder.as_posix(),
-                    "analytical_available": analytical is not None
-                    })
-                completed += 1
+                    if stop_event is not None and stop_event.is_set(): #Got stopped, check before doing the calculation
+                        elapsed = TotalElapsed()
+                        manifest = WriteBenchmarkCheckpoint(
+                            output_folder, run, results,
+                            status="stopped",
+                            elapsed_seconds=elapsed)
+                        progress.put(f"Run stopped: {completed}/{total} combinations completed. Elapsed time: {elapsed:.2f} seconds.")
+                        return manifest
+
+                    progress.put(f"[{completed + 1} / {total}] Running {name}, N = {n}, dt = {dt:g}")
+
+                    config = replace(base_config, N = n, dt = dt)
+
+                    grid, wave, potential, analytical = BuildBenchmarkProblem(config)
+
+                    relative_folder = Path(f"problem_{problem_idx:03d}") / f"N_{n_idx:03d}_dt_{dt_idx:03d}"
+                    setting_folder = output_folder / relative_folder
+                    setting_folder.mkdir(parents = True, exist_ok = False)
+
+                    RunComparison(
+                        setting_folder = setting_folder,
+                        N = n,
+                        dt = dt,
+                        T_final = config.T_final,
+                        grid = grid,
+                        wave_func = wave,
+                        potential = potential,
+                        analytical = analytical,
+                        mass = config.mass,
+                        hbar = config.hbar,
+                        steps = round(config.T_final / dt)
+                        )
+
+                    results.append({
+                        "problem": name,
+                        "N": n,
+                        "dt": dt,
+                        "folder": relative_folder.as_posix(),
+                        "analytical_available": analytical is not None
+                        })
+                    completed += 1
                 
-                WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = perf_counter() - start_time) #Write mid-way
-                progress.put(f"[{completed} / {total}] Finished {name}")
-    """
-    manifest = {"configuration": run, "results": results}
-    (output_folder / "run.json").write_text(json.dumps(manifest, indent = 2, allow_nan = False), encoding = "utf-8")
-    """
-    #Completed so write
-    manifest = WriteBenchmarkCheckpoint(output_folder, run, results, status = "completed", elapsed_seconds = perf_counter() - start_time) 
+                    WriteBenchmarkCheckpoint(output_folder, run, results, status = "running", elapsed_seconds = TotalElapsed()) #Write mid-way
+                    progress.put(f"[{completed} / {total}] Finished {name}")
+        """
+        manifest = {"configuration": run, "results": results}
+        (output_folder / "run.json").write_text(json.dumps(manifest, indent = 2, allow_nan = False), encoding = "utf-8")
+        """
+        #Completed so write
+        manifest = WriteBenchmarkCheckpoint(output_folder, run, results, status = "completed", elapsed_seconds = TotalElapsed()) 
 
-    #report on the total runtime of this run
-    elapsed = perf_counter() - start_time
-    hours, remainder = divmod(elapsed, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    progress.put(f"Total benchmark time: {int(hours)}h {int(minutes)}m {seconds:.2f}s ({elapsed:.2f} seconds).")
+        #report on the total runtime of this run
+        elapsed = TotalElapsed()
+        hours, remainder = divmod(elapsed, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        progress.put(f"Total benchmark time: {int(hours)}h {int(minutes)}m {seconds:.2f}s ({elapsed:.2f} seconds).")
     
-    return manifest
+        return manifest
+
+
+def ResumeBenchmarkConfiguration(source_folder, output_folder, manifest, progress, stop_event):
+    source_folder = Path(source_folder).resolve()
+    output_folder = Path(output_folder)
+    run = manifest["configuration"]
+
+    #Require the folder layout produced by RunBenchmarkConfiguration
+    expected_folders = {
+        (name, str(n), str(dt)): Path(f"problem_{problem_idx:03d}") / f"N_{n_idx:03d}_dt_{dt_idx:03d}"
+        for problem_idx, name in enumerate(run["problems"], start=1)
+        for n_idx, n in enumerate(run["N_values"], start=1)
+        for dt_idx, dt in enumerate(run["dt_values"], start=1)
+    }
+    progress.put("Preparing completed results for resuming...")
+
+    # Copy only recorded, completed combinations.
+    for record in manifest["results"]:
+        key = (record["problem"], str(record["N"]), str(record["dt"]))
+        relative = expected_folders[key]
+
+        if Path(record["folder"]) != relative:
+            raise ValueError(f"Unexpected result folder for {key}: {record['folder']}")
+
+        destination = output_folder / relative
+        destination.mkdir(parents=True, exist_ok=False)
+
+        for filename in ("comparison_data.csv", "runtime_data.txt"):
+            source = (source_folder / relative / filename).resolve()
+
+            if not source.is_relative_to(source_folder):
+                raise ValueError("A result file points outside the run folder.")
+            if not source.is_file():
+                raise ValueError(f"Missing completed result file: {source}")
+
+            shutil.copy2(source, destination / filename)
+
+    return RunBenchmarkConfiguration(run,
+                                    output_folder,
+                                    progress,
+                                    stop_event=stop_event,
+                                    resume_manifest=manifest)
 
 
 def SaveBenchmarkResults(source_folder, parent_folder):
