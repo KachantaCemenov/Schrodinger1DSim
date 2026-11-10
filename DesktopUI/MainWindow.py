@@ -1586,7 +1586,7 @@ class MainWindow(tk.Tk):
             messagebox.showinfo("Benchmark busy",
             "A benchmark is still running or its results are being saved.\n\n"
             "Please wait until it finishes or stop it before closing the application.", parent=self)
-        return
+            return
 
         if self.benchmark_temp_directory is not None:
             discard = messagebox.askyesno("Unsaved benchmark results",

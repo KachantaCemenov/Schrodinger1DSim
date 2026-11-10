@@ -23,7 +23,7 @@ class BenchmarkWorkingDirectory:
         self.name = str(self.path)
 
     def cleanup(self):
-        root = RECOVERY ROOT.resolve()
+        root = RECOVERY_ROOT.resolve()
         target = self.path.resolve()
 
         if target.parent != root or target.name != self.path.name:

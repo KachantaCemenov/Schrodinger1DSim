@@ -8,6 +8,7 @@ from datetime import datetime
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 from time import perf_counter
+import os
 
 
 from Simulation import BuildGrid, BuildWaveFunction, BuildPotential, INFINITE_WELL_SSF_MESSAGE
@@ -163,7 +164,15 @@ def WriteBenchmarkCheckpoint(output_folder, run, results, status, elapsed_second
     manifest_path = output_folder / "run.json"
 
     #write to different file first before replace in case write fail
+    """
     temporary_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding="utf-8") 
+    temporary_path.replace(manifest_path)
+    """
+    with temporary_path.open("w", encoding="utf-8") as file: #Write straight into the recovery path
+        json.dump(manifest, file, indent = 2, allow_nan = False)
+        file.flush()
+        os.fsync(file.fileno())
+
     temporary_path.replace(manifest_path)
 
     return manifest
