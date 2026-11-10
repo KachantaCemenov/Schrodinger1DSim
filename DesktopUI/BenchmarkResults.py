@@ -1,10 +1,85 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
+import json
+import math
+from itertools import product
 
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+def ReadBenchmarkManifest(folder):
+    folder = Path(folder).resolve()
+
+    with (folder / "run.json").open("r", encoding = "utf-8") as f:
+        manifest = json.load(f)
+
+    #Check EVERYTHING    (REMEMBER TO CHANGE WHEN CHANGE CONFIG VERSION)
+    if not isinstance(manifest, dict):
+        raise ValueError("run.json was not loaded as a dict.")
+
+    config = manifest.get("configuration")
+    results = manifest.get("results")
+    if not isinstance(config, dict) or config.get("version") != 1:
+        raise ValueError("Unsupported run configuration format.")
+
+    problems = config.get("problems")
+    n_values = config.get("N_values")
+    dt_values = config.get("dt_values")
+
+    
+    if not isinstance(problems, dict) or not problems:
+        raise ValueError("The run must contain named problems.")
+    if any(not name.strip() for name in problems):
+        raise ValueError("Problem names cannot be empty.")
+    if not isinstance(n_values, list) or not n_values:
+        raise ValueError("The run must contain N values.")
+    if not isinstance(dt_values, list) or not dt_values:
+        raise ValueError("The run must contain dt values.")
+
+    for n in n_values:
+        if type(n) is not int or n < 3:
+            raise ValueError("N values must be integers of at least 3.")
+    for dt in dt_values:
+        if type(dt) not in (int, float) or not math.isfinite(dt) or dt <= 0:
+            raise ValueError("dt values must be finite and positive.")
+
+    if len(set(n_values)) != len(n_values):
+        raise ValueError("The run contains duplicate N values.")
+    if len(set(dt_values)) != len(dt_values):
+        raise ValueError("The run contains duplicate dt values.")
+    if not isinstance(results, list) or not results:
+        raise ValueError("The manifest must contain result records.")
+
+    expected = set(product(problems, map(str, n_values), map(str, dt_values)))
+    found = set()
+
+    for record in results:
+        if not isinstance(record, dict):
+            raise ValueError("Invalid record in results.")
+
+        problem = record.get("problem")
+        relative_folder = record.get("folder")
+        if not isinstance(problem, str) or not isinstance(relative_folder, str):
+            raise ValueError("Each result needs a problem name and folder.")
+
+        key = (problem, str(record.get("N")), str(record.get("dt")))
+        if key not in expected or key in found:
+            raise ValueError(f"Unexpected or duplicate result: {key}")
+
+        csv_path = (folder / relative_folder / "comparison_data.csv").resolve()
+        if not csv_path.is_relative_to(folder):
+            raise ValueError("A result path points outside the run folder.")
+        if not csv_path.is_file():
+            raise ValueError(f"Missing result file: {csv_path}")
+        found.add(key)
+
+    if found != expected:
+        raise ValueError("The run is missing some problem/N/dt results.")
+
+    return manifest
+
 
 class BenchmarkResults(ttk.Frame):
     QUANTITIES = {

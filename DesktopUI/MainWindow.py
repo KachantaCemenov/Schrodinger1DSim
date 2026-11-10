@@ -5,6 +5,7 @@ import math
 from dataclasses import replace, asdict
 from queue import Queue, Empty
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -15,7 +16,7 @@ from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STE
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
             CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
 from Benchmark import BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults
-from BenchmarkResults import BenchmarkResults
+from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -150,11 +151,14 @@ class MainWindow(tk.Tk):
     def CreateReadBenchmarkTab(self):
         toolbar = ttk.Frame(self.read_benchmark_tab, padding=8)
         toolbar.pack(fill="x")
+
+        ttk.Button(toolbar, text = "Open run folder", command = self.OnOpenBenchmarkRun).pack(side="left", padx=(0, 8))
+
         self.read_benchmark_folder_button = ttk.Button(toolbar, text="Open results folder",
                                                         command=self.OpenBenchmarkResultsFolder,
                                                         state="disabled")
         self.read_benchmark_folder_button.pack(side = "left")
-        self.read_benchmark_path = tk.StringVar(value = "Save a benchmark run to inspect its result")
+        self.read_benchmark_path = tk.StringVar(value = "Open a saved run folder or save a new benchmark run.")
         ttk.Label(toolbar, textvariable = self.read_benchmark_path, wraplength = 650).pack(side = "left", padx = 12)
         self.benchmark_results_view = BenchmarkResults(self.read_benchmark_tab)
         self.benchmark_results_view.pack(fill = "both", expand = True, padx = 8, pady = (0,8))
@@ -648,7 +652,25 @@ class MainWindow(tk.Tk):
             worker.shutdown(wait=False)
         self.after(100, self.PollBenchmarkSave)
 
-    def DisplayBenchmarkRun(self, folder, manifest): #let this script know the folder and results
+
+    def OnOpenBenchmarkRun(self):
+        selected_folder = filedialog.askdirectory(title = "Select the run folder containing run.json", parent = self, mustexist = True)
+        if not selected_folder:
+            return
+
+        folder = Path(selected_folder)
+
+        try:
+            manifest = ReadBenchmarkManifest(folder)
+        except (OSError, ValueError, TypeError, OverflowError) as error:
+            messagebox.showerror("Cannot open benchmark run",str(error),parent=self)
+            return
+
+        self.DisplayBenchmarkRun(folder, manifest)
+
+
+
+    def DisplayBenchmarkRun(self, folder, manifest): #Method to let this script know the folder and results
         self.benchmark_saved_folder = folder
         self.benchmark_saved_manifest = manifest
 
@@ -690,13 +712,13 @@ class MainWindow(tk.Tk):
         manifest = self.benchmark_manifest
         self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
         self.ReleaseCompletedBenchmark()
-        self.DisplayBenchmarkRun(saved_folder, manifest)
+        self.DisplayBenchmarkRun(saved_folder, manifest) #Jump to ReadBenchmark after saving
 
-
+    """ NOT NEEDED after result_view was removed from Benchmark tab
     def PositionBenchmarkDivider(self):  
         height = self.benchmark_panes.winfo_height()
         self.benchmark_panes.sashpos(0, int(height * 0.60))
-
+    """
 
     #Method to reset the temporary folder
     def ReleaseCompletedBenchmark(self):
