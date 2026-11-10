@@ -32,11 +32,13 @@ class MainWindow(tk.Tk):
         self.notebook = ttk.Notebook(self)
         self.simulation_tab = ttk.Frame(self.notebook)
         self.benchmark_tab = ttk.Frame(self.notebook)
+        self.read_benchmark_tab = ttk.Frame(self.notebook)
         self.recommendation_tab = ttk.Frame(self.notebook)
 
         self.notebook.add(self.simulation_tab, text="Simulation")
 
-        self.notebook.add(self.benchmark_tab, text="Benchmark Data")
+        self.notebook.add(self.benchmark_tab, text="Benchmark")
+        self.notebook.add(self.read_benchmark_tab, text="Read Benchmark")
 
         self.notebook.add( self.recommendation_tab, text="Recommendation")
 
@@ -44,6 +46,7 @@ class MainWindow(tk.Tk):
 
         self.CreateSimulationTab()
         self.CreateBenchmarkTab()
+        self.CreateReadBenchmarkTab()
 
         """
         #Animation testing
@@ -144,14 +147,29 @@ class MainWindow(tk.Tk):
         self.wave_animation = WaveAnimation(animation_frame)
         self.wave_animation.pack(fill="both", expand=True)
 
+    def CreateReadBenchmarkTab(self):
+        toolbar = ttk.Frame(self.read_benchmark_tab, padding=8)
+        toolbar.pack(fill="x")
+        self.read_benchmark_folder_button = ttk.Button(toolbar, text="Open results folder",
+                                                        command=self.OpenBenchmarkResultsFolder,
+                                                        state="disabled")
+        self.read_benchmark_folder_button.pack(side = "left")
+        self.read_benchmark_path = tk.StringVar(value = "Save a benchmark run to inspect its result")
+        ttk.Label(toolbar, textvariable = self.read_benchmark_path, wraplength = 650).pack(side = "left", padx = 12)
+        self.benchmark_results_view = BenchmarkResults(self.read_benchmark_tab)
+        self.benchmark_results_view.pack(fill = "both", expand = True, padx = 8, pady = (0,8))
+
     def CreateBenchmarkTab(self):
+        """
         tab = self.benchmark_tab
         self.benchmark_panes = ttk.Panedwindow(tab, orient = "vertical")
         self.benchmark_panes.pack(fill = "both", expand = True)
         top = ttk.Frame(self.benchmark_panes, padding = 10)
         self.benchmark_panes.add(top, weight = 3)
+        """
+        top = ttk.Frame(self.benchmark_tab, padding = 10)
+        top.pack(fill = "both", expand = True)
 
-        
         top.columnconfigure(1, weight=1)
         top.rowconfigure(0, weight=1)
 
@@ -274,11 +292,12 @@ class MainWindow(tk.Tk):
         self.open_benchmark_folder_button.grid(row = 3, column = 0, columnspan = 3, sticky = "ew", pady = (5,0))
 
 
-        #Bottom: table and graph show after user click save
-
+        #Result frame has been moved to ReadBenchmark tab
+        """
         self.benchmark_results_frame = ttk.LabelFrame(self.benchmark_panes, text="Benchmark Results", padding=8)
         self.benchmark_results_view = BenchmarkResults(self.benchmark_results_frame)
         self.benchmark_results_view.pack(fill="both", expand=True)
+        """
 
     #Methods for Benchmark Tab -----------------------------------------
 
@@ -629,6 +648,17 @@ class MainWindow(tk.Tk):
             worker.shutdown(wait=False)
         self.after(100, self.PollBenchmarkSave)
 
+    def DisplayBenchmarkRun(self, folder, manifest): #let this script know the folder and results
+        self.benchmark_saved_folder = folder
+        self.benchmark_saved_manifest = manifest
+
+        self.benchmark_results_view.LoadRun(folder, manifest)
+        self.read_benchmark_path.set(str(folder))
+
+        self.open_benchmark_folder_button.configure(state="normal")
+        self.read_benchmark_folder_button.configure(state="normal")
+        self.notebook.select(self.read_benchmark_tab) #jump to ReadBenchmark tab
+
     def PollBenchmarkSave(self):
         if not self.benchmark_save_future.done():
             self.after(100, self.PollBenchmarkSave)
@@ -642,8 +672,8 @@ class MainWindow(tk.Tk):
             self.start_benchmark_button.configure(state = "normal", text = "Save / discard completed run")
             return
 
-        #let this script know the folder and results
-        self.benchmark_saved_folder = saved_folder
+        
+        """self.benchmark_saved_folder = saved_folder
         self.benchmark_saved_manifest = self.benchmark_manifest
         self.open_benchmark_folder_button.configure(state="normal")
 
@@ -655,7 +685,13 @@ class MainWindow(tk.Tk):
             self.benchmark_panes.add(self.benchmark_results_frame, weight=2)
             self.after_idle(self.PositionBenchmarkDivider)
 
-        self.benchmark_results_view.LoadRun(self.benchmark_saved_folder, self.benchmark_saved_manifest)
+        self.benchmark_results_view.LoadRun(self.benchmark_saved_folder, self.benchmark_saved_manifest)"""
+
+        manifest = self.benchmark_manifest
+        self.AppendBenchmarkConsoleMessage(f"Results saved to:\n{saved_folder}")
+        self.ReleaseCompletedBenchmark()
+        self.DisplayBenchmarkRun(saved_folder, manifest)
+
 
     def PositionBenchmarkDivider(self):  
         height = self.benchmark_panes.winfo_height()
