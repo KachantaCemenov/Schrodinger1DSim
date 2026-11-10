@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import math
 from itertools import product
+from ResultTable import ResultTable
 
 import pandas as pd
 from matplotlib.figure import Figure
@@ -118,10 +119,73 @@ class BenchmarkResults(ttk.Frame):
             self.variables[label] = variable
             self.dropdowns[label] = dropdown
 
-        self.figure = Figure(figsize=(8, 3), dpi=100)
+        """self.figure = Figure(figsize=(8, 3), dpi=100)
         self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)"""
+
+        #Make the table and graph sections into panedwindows
+        self.result_panes = ttk.Panedwindow(self, orient="horizontal")
+        self.result_panes.pack(fill="both", expand=True)
+
+        graph_frame = ttk.Frame(self.result_panes)
+        table_frame = ttk.Frame(self.result_panes, padding=(8, 0))
+        self.result_panes.add(graph_frame, weight=3)
+        self.result_panes.add(table_frame, weight=2)
+
+        self.figure = Figure(figsize=(6, 3), dpi=100)
+        self.axes = self.figure.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=graph_frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        self.table_page = 0
+        self.table_page_size = 200 #Putting 500 000 rows into this window isn't good idea
+
+        paging = ttk.Frame(table_frame)
+        paging.pack(side="bottom", fill="x", pady=5)
+        self.previous_page_button = ttk.Button(paging,text="Previous",
+                                        command=lambda: self.ChangeTablePage(-1),state="disabled")
+        self.previous_page_button.pack(side="left")
+        self.next_page_button = ttk.Button(paging,text="Next",
+                                        command=lambda: self.ChangeTablePage(1), state="disabled")
+        self.next_page_button.pack(side="right")
+
+        self.table_page_text = tk.StringVar(value = "No results loaded")
+        ttk.Label(paging, textvariable = self.table_page_text).pack(side = "left", padx = 8)
+
+        self.result_table = ResultTable(table_frame)
+        self.result_table.pack(fill = "both", expand = True)
+
+    def RefreshTable(self):
+        if self.data is None:
+            self.result_table.LoadDataFrame(pd.DataFrame(columns=["Time", "Crank–Nicolson", "SSF"]))
+            self.table_page_text.set("No results loaded")
+            self.previous_page_button.configure(state="disabled")
+            self.next_page_button.configure(state="disabled")
+            return
+
+        quantity = self.variables["Quantity"].get()
+        cn_column, ssf_column = self.QUANTITIES[quantity]
+
+        start = self.table_page * self.table_page_size
+        end = min(start + self.table_page_size, len(self.data)) 
+        page = self.data.iloc[start:end][["time", cn_column, ssf_column]].copy()
+        page.columns = ["Time", "Crank–Nicolson", "SSF"]
+
+        formatted = page.map(lambda value: f"{value:.16g}") #16 significant digits
+        self.result_table.LoadDataFrame(formatted)
+
+        self.table_page_text.set(f"Rows {start + 1}–{end} of {len(self.data)}")
+        self.previous_page_button.configure(state="normal" if self.table_page > 0 else "disabled")
+        self.next_page_button.configure(state="normal" if end < len(self.data) else "disabled")
+
+    def ChangeTablePage(self, direction): 
+        if self.data is None:
+            return
+        last_page = (len(self.data) - 1) // self.table_page_size
+        self.table_page = max(0, min(self.table_page + direction, last_page))
+        self.RefreshTable()
+
 
     def LoadRun(self, folder, manifest):
         self.folder = Path(folder)
@@ -151,6 +215,7 @@ class BenchmarkResults(ttk.Frame):
         n = self.variables["N"].get()
         dt = self.variables["dt"].get()
         columns = self.QUANTITIES[quantity]
+        self.table_page = 0
 
         try:
             record = self.records[(problem, n, dt)]
@@ -176,6 +241,7 @@ class BenchmarkResults(ttk.Frame):
         except (OSError, ValueError, KeyError) as e: #Reset everything
             self.data = None
             self.loaded_path = None
+            self.RefreshTable()
             self.axes.clear()
             self.axes.set_title("Unable to load selected results")
             self.canvas.draw_idle()
@@ -201,3 +267,4 @@ class BenchmarkResults(ttk.Frame):
         self.axes.grid(alpha=0.25)
         self.figure.tight_layout()
         self.canvas.draw_idle()
+        self.RefreshTable()
