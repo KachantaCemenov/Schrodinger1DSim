@@ -53,7 +53,11 @@ class HelpWindow(tk.Toplevel):
             text.tag_configure("italic", font=("Segoe UI", 11, "italic"))
             text.tag_configure("bullet", lmargin1 = 15, lmargin2 = 32, spacing3 = 4)
 
-            text.insert("1.0", content)
+            for paragraph, tag in content:
+                if tag is None:
+                    text.insert("end", paragraph)
+                else:
+                    text.insert("end", paragraph, (tag,))
             text.configure(state = "disabled")
 
         ttk.Button(container, text = "Close", command = self.destroy).pack(anchor = "e", pady = (10, 0))
