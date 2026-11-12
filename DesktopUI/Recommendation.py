@@ -42,7 +42,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
     setting_folder = run_folder / record["folder"]
 
     csv_path = (setting_folder / "comparison_data.csv").resolve()
-    runtime_path = (setting_folder / "runtime_data.csv").resolve()
+    runtime_path = (setting_folder / "runtime_data.txt").resolve()
 
     for path in (csv_path, runtime_path):
         if not path.is_relative_to(run_folder):
@@ -54,7 +54,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
 
     dt = float(record["dt"])
     T = float(config["T_final"])
-    ratio = final_time / dt
+    ratio = T / dt
 
     if not math.isfinite(ratio) or ratio < 1:
         raise ValueError("Invalid final time or dt in the saved configuration.")
@@ -113,7 +113,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
 
                 available_l2 = l2[~np.isnan(l2)] #save l2 values that are not NaN
                 if available_l2.size:
-                    if not np.all(np.isfinite(available_l2)) or np.any(available_l2 < 0)):
+                    if not np.all(np.isfinite(available_l2)) or np.any(available_l2 < 0):
                         raise ValueError(f"Invalid {method} L2 errors in {csv_path}.")
 
                     state["max_L2_error"] = max(state["max_L2_error"], float(available_l2.max()))
@@ -138,7 +138,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
 
         has_reference = count == row_count
 
-        if declared_reference is not None and declared_reference != has_reference):
+        if declared_reference is not None and declared_reference != has_reference:
             raise ValueError(f"{method} L2 data disagrees with the manifest in {csv_path}.")
 
         rows.append({"problem": record["problem"],

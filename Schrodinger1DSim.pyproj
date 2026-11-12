@@ -38,6 +38,7 @@
     <Compile Include="DesktopUI\Recommendation.py" />
     <Compile Include="DesktopUI\ResultTable.py" />
     <Compile Include="DesktopUI\Simulation.py" />
+    <Compile Include="DesktopUI\TestRecommendation.py" />
     <Compile Include="DesktopUI\WaveAnimation.py" />
     <Compile Include="DesktopUI\WaveFuncParser.py" />
     <Compile Include="potential.py" />
