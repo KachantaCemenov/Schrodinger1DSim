@@ -7,7 +7,7 @@ import os
 
 import pandas as pd
 
-from Recommendation import BuildRecommendationSummary
+from Recommendation import BuildRecommendationSummary, FindRecommendation
 
 #Make Recommendation tab here so MainWindow doesn't blow up more than it already is
 
@@ -19,6 +19,7 @@ class RecommendationTab(ttk.Frame):
         self.folder = None
         self.manifest = None
         self.summary = None
+        self.last_recommendation = None
         self.future = None
         self.progress = Queue()
 
@@ -81,6 +82,8 @@ class RecommendationTab(ttk.Frame):
 
         panes.add(table_frame, weight = 3)
 
+        self.CreateRequirements()
+
     def IsLoading(self):
         # Includes a finished worker whose result hasn't been processed yet.
         return self.future is not None
@@ -129,6 +132,7 @@ class RecommendationTab(ttk.Frame):
         try:
             worker = ThreadPoolExecutor(max_workers = 1)
             self.future = worker.submit(BuildRecommendationSummary, self.pending_folder, self.progress)
+            self.RefreshRequirementControls()
         except Exception as error:
             self.future = None
             self.FinishLoadingControls()
@@ -170,6 +174,7 @@ class RecommendationTab(ttk.Frame):
         self.folder = self.pending_folder
         self.manifest = manifest
         self.summary = summary
+        self.InitializeRequirements()
 
         self.path_text.set(str(self.folder))
         self.folder_button.configure(state = "normal")
@@ -192,6 +197,7 @@ class RecommendationTab(ttk.Frame):
         self.progress_bar.stop()
         self.open_button.configure(state = "normal")
         self.use_loaded_button.configure(state = "normal")
+        self.RefreshRequirementControls()
 
     def ShowSummary(self):
         children = self.table.get_children()
@@ -230,3 +236,226 @@ class RecommendationTab(ttk.Frame):
                     text = f"{float(value):.8g}"
                 values.append(text)
             self.table.insert("", "end", values = values)
+
+    def CreateRequirements(self):
+        frame = self.requirements_frame
+        frame.columnconfigure(1, weight=1)
+
+        self.selection_vars = {}
+        self.selection_boxes = {}
+
+        for row, label in enumerate(("Problem", "N", "dt")):
+            ttk.Label(frame, text=f"{label}:").grid(row = row, column = 0, sticky = "w", pady = 4)
+
+            variable = tk.StringVar()
+            box = ttk.Combobox(frame, textvariable=variable, state="disabled", width = 26)
+            box.grid(row = row, column = 1, sticky = "ew", pady = 4)
+
+            self.selection_vars[label] = variable
+            self.selection_boxes[label] = box
+
+        self.selection_boxes["Problem"].bind("<<ComboboxSelected>>", lambda event: self.UpdateRequirements(problem_changed = True),)
+        self.selection_boxes["N"].bind("<<ComboboxSelected>>", lambda event: self.UpdateRequirements())
+        self.selection_boxes["dt"].bind("<<ComboboxSelected>>", lambda event: self.InvalidateRecommendation())
+
+        ttk.Label(frame, text="Maximum allowed:").grid(row = 3, column = 0, columnspan = 2, sticky="w", pady=(10, 4))
+
+        self.tolerance_enabled = {}
+        self.tolerance_values = {}
+        self.tolerance_checks = {}
+        self.tolerance_entries = {}
+
+        for row, (key, label) in enumerate((("l2", "L2 error"), ("norm", "Norm drift"), ("energy", "Energy drift")), start = 4):
+            enabled = tk.BooleanVar(value = False)
+            value = tk.StringVar()
+
+            check = ttk.Checkbutton(frame, text = label, variable = enabled, command = self.OnToleranceToggle, state="disabled")
+            check.grid(row = row, column=0, sticky="w", pady=4)
+
+            entry = ttk.Entry(frame, textvariable = value, state = "disabled", width=18)
+            entry.grid(row = row, column=1, sticky="ew", pady=4)
+            value.trace_add("write", lambda *_: self.InvalidateRecommendation())
+
+            self.tolerance_enabled[key] = enabled
+            self.tolerance_values[key] = value
+            self.tolerance_checks[key] = check
+            self.tolerance_entries[key] = entry
+
+        self.reference_note = tk.StringVar()
+        ttk.Label(frame, textvariable = self.reference_note, wraplength = 300).grid(row=7, column=0, columnspan=2, sticky="w", pady=6)
+
+        self.find_button = ttk.Button(frame, text="Find recommendation", command = self.CalculateRecommendation, state="disabled")
+        self.find_button.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+
+        self.reset_button = ttk.Button(frame, text="Reset requirements", command=self.ResetRequirements, state="disabled")
+        self.reset_button.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+
+    def RequirementsReady(self):
+        return (not self.IsLoading() and self.summary is not None and not self.summary.empty)
+
+
+    def InvalidateRecommendation(self): 
+        self.last_recommendation = None
+        if self.summary is not None and not self.summary.empty:
+            self.result_text.set("Requirements changed. Click Find recommendation.")
+
+
+    def RefreshRequirementControls(self): #Refresh boxes and checks
+        ready = self.RequirementsReady()
+
+        for box in self.selection_boxes.values():
+            box.configure(state="readonly" if ready else "disabled")
+
+        for key, check in self.tolerance_checks.items():
+            allowed = ready
+            if key == "l2":
+                allowed = ready and getattr(self, "l2_available", False)
+
+            check.configure(state="normal" if allowed else "disabled")
+            self.tolerance_entries[key].configure(state = "normal" if allowed and self.tolerance_enabled[key].get() else "disabled")
+
+        self.find_button.configure(state =  "normal" if ready else "disabled")
+        self.reset_button.configure(state = "normal" if ready else "disabled")
+
+
+    def OnToleranceToggle(self):
+        self.RefreshRequirementControls()
+        self.InvalidateRecommendation()
+
+
+    def InitializeRequirements(self):
+        problems = ([] if self.summary.empty else list(self.summary["problem"].drop_duplicates()))
+
+        self.last_recommendation = None
+
+        self.selection_boxes["Problem"].configure(values=problems)
+        self.selection_vars["Problem"].set(problems[0] if problems else "")
+
+        self.ResetRequirements()
+
+
+    def ResetRequirements(self):
+        for key in self.tolerance_enabled:
+            self.tolerance_enabled[key].set(False)
+            self.tolerance_values[key].set("")
+
+        self.selection_vars["N"].set("Any tested value")
+        self.selection_vars["dt"].set("Any tested value")
+        self.UpdateRequirements()
+
+    def UpdateRequirements(self, problem_changed=False):
+        if self.summary is None or self.summary.empty:
+            self.l2_available = False
+            self.reference_note.set("No completed candidates are available.")
+
+            for label in ("N", "dt"): #reset boxes cus no problems
+                self.selection_boxes[label].configure(values=())
+                self.selection_vars[label].set("")
+
+            self.RefreshRequirementControls()
+            return
+
+        problem = self.selection_vars["Problem"].get()
+        data = self.summary.loc[self.summary["problem"] == problem]
+
+        if problem_changed:
+            self.selection_vars["N"].set("Any tested value")
+            self.selection_vars["dt"].set("Any tested value")
+
+        n_choices = ["Any tested value"] + [str(int(value)) for value in sorted(data["N"].unique())]
+        self.selection_boxes["N"].configure(values = n_choices)
+
+        if self.selection_vars["N"].get() not in n_choices:
+            self.selection_vars["N"].set("Any tested value")
+
+        selected_n = self.selection_vars["N"].get()
+        dt_data = data if selected_n == "Any tested value" else data.loc[data["N"] == int(selected_n)]
+
+        
+        dt_choices = ["Any tested value"] + [str(float(value)) for value in sorted(dt_data["dt"].unique())]
+        self.selection_boxes["dt"].configure(values = dt_choices)
+
+        if self.selection_vars["dt"].get() not in dt_choices:
+            self.selection_vars["dt"].set("Any tested value")
+
+        self.l2_available = not data.empty and bool(data["analytical_available"].all())
+
+        if not self.l2_available:
+            self.tolerance_enabled["l2"].set(False)
+            self.reference_note.set("L2 constraint unavailable: analytical-reference data is not available for every candidate of this problem.")
+        else:
+            self.reference_note.set("Unchecked constraints are ignored. Energy drift uses the benchmark's energy units.")
+
+        self.RefreshRequirementControls()
+        self.InvalidateRecommendation()
+
+
+    def CalculateRecommendation(self): #And write out the recommendation
+        if not self.RequirementsReady():
+            return
+
+        def Tolerance(key):
+            if not self.tolerance_enabled[key].get():
+                return None
+
+            text = self.tolerance_values[key].get().strip()
+            if not text:
+                raise ValueError(f"Enter a value for the enabled {key} constraint.")
+            return text
+
+        try:
+            n_text = self.selection_vars["N"].get()
+            dt_text = self.selection_vars["dt"].get()
+
+            result = FindRecommendation(self.summary,
+                                    self.selection_vars["Problem"].get(),
+                                    N = None if n_text == "Any tested value" else int(n_text),
+                                    dt = None if dt_text == "Any tested value" else float(dt_text),
+                                    l2_tolerance = Tolerance("l2"),
+                                    norm_tolerance = Tolerance("norm"),
+                                    energy_tolerance = Tolerance("energy"))
+
+        except (ValueError, TypeError, OverflowError) as error:
+            messagebox.showerror("Invalid requirements", str(error), parent=self)
+            return
+
+        def Describe(row):
+            return (f"{row['method']}: N={int(row['N'])}, "
+                        f"dt={float(row['dt']):.16g}, "
+                        f"runtime={float(row['runtime']):.6g} s")
+
+        def Metric(value):
+            return "N/A" if pd.isna(value) else f"{float(value):.8g}"
+
+        best = result["best"]
+        lines = []
+
+        if result["candidates"].empty:
+            lines.append("No completed candidates match the selected N and dt.")
+        elif best is None:
+            lines.append("No tested candidate meets all requirements.")
+        else:
+            lines.extend(["Recommended: " + Describe(best),
+                        "",
+                        f"Maximum L2 error: {Metric(best['max_L2_error'])}",
+                        f"Maximum norm drift: {Metric(best['max_norm_error'])}",
+                        f"Maximum energy drift: {Metric(best['max_energy_error'])}",
+                        "",
+                        "Meets all selected requirements."])
+
+        if not any(value.get() for value in self.tolerance_enabled.values()):
+            lines.append("\nNo accuracy or conservation constraints were applied.")
+
+        lines.append("\nBest qualifying candidate per solver:")
+        for method, row in result["best_by_method"].items():
+            lines.append(f"{method}: no qualifying candidate" if row is None else Describe(row))
+
+        lines.append(f"\nQualifying candidates: {len(result['eligible'])} / {len(result['candidates'])}")
+
+        if (self.manifest["completed_combinations"] < self.manifest["total_combinations"]):
+            lines.append("Partial run: uncompleted combinations were not evaluated.")
+
+        lines.append("Ranking uses recorded runtimes; results apply to this tested run.")
+
+        self.result_text.set("\n".join(lines))
+        self.last_recommendation = result
