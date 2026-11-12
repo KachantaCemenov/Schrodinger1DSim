@@ -4,8 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import Queue, Empty
 import os
-
 import pandas as pd
+import json
+import zipfile
+from tempfile import TemporaryDirectory
 
 from Recommendation import BuildRecommendationSummary, FindRecommendation
 
@@ -68,17 +70,37 @@ class RecommendationTab(ttk.Frame):
 
         # Summary table with both scrollbars
         table_frame = ttk.LabelFrame(panes, text = "Tested candidates", padding = 6)
-        table_frame.rowconfigure(0, weight = 1)
+        table_frame.rowconfigure(1, weight = 1)
         table_frame.columnconfigure(0, weight = 1)
 
+        #Candidate pass/fail table
+        table_controls = ttk.Frame(table_frame)
+        table_controls.grid(row = 0, column = 0, columnspan = 2, sticky = "ew", pady = (0, 6))
+        ttk.Label(table_controls, text = "Show:").pack(side = "left")
+
+        self.candidate_filter = tk.StringVar(value="All candidates")
+        self.candidate_filter_box = ttk.Combobox(table_controls, textvariable=self.candidate_filter,
+            values = ("All candidates", "Qualifying only", "Rejected only"), state="disabled", width=20)
+        self.candidate_filter_box.pack(side="left", padx=8)
+        self.candidate_filter_box.bind("<<ComboboxSelected>>", lambda event: self.ShowSummary())
+
+        self.table_count = tk.StringVar(value="No candidates loaded.")
+        ttk.Label(table_controls, textvariable=self.table_count).pack(side="left", padx=8)
+
+        """ Export button?
+        self.export_button = ttk.Button(table_controls, text="Export report", command=self.ExportRecommendation, state="disabled")
+        self.export_button.pack(side="right")
+        """
+
+        #Total candidates table
         self.table = ttk.Treeview(table_frame, show = "headings", selectmode = "browse")
         vertical = ttk.Scrollbar(table_frame, orient = "vertical", command = self.table.yview)
         horizontal = ttk.Scrollbar(table_frame, orient = "horizontal", command = self.table.xview)
         self.table.configure(yscrollcommand = vertical.set, xscrollcommand = horizontal.set)
 
-        self.table.grid(row = 0, column = 0, sticky = "nsew")
-        vertical.grid(row = 0, column = 1, sticky = "ns")
-        horizontal.grid(row = 1, column = 0, sticky ="ew")
+        self.table.grid(row = 1, column = 0, sticky = "nsew")
+        vertical.grid(row = 1, column = 1, sticky = "ns")
+        horizontal.grid(row = 2, column = 0, sticky ="ew")
 
         panes.add(table_frame, weight = 3)
 
@@ -204,6 +226,23 @@ class RecommendationTab(ttk.Frame):
         if children:
             self.table.delete(*children)
 
+        evaluated = self.last_recommendation is not None
+        if evaluated:   #Showing filtered candidates
+            data = self.last_recommendation["candidates"]
+            total = len(data)
+            selection = self.candidate_filter.get()
+            if selection == "Qualifying only":
+                data = data.loc[data["passes"]]
+            elif selection == "Rejected only":
+                data = data.loc[~data["passes"]]
+            self.table_count.set(f"Showing {len(data)} / {total} evaluated candidates")
+        else:
+            data = self.summary
+            count = 0 if data is None else len(data)
+            self.table_count.set(f"{count} candidates; not evaluated")
+            self.candidate_filter.set("All candidates")
+
+
         headings = {"problem": "Problem",
                     "method": "Solver",
                     "N": "N",
@@ -212,30 +251,38 @@ class RecommendationTab(ttk.Frame):
                     "max_L2_error": "Maximum L2 error",
                     "max_norm_error": "Maximum norm drift",
                     "max_energy_error": "Maximum energy drift"}
+        if evaluated:
+            headings.update({"passes": "Meet requirements",
+                             "reason": "Rejection reason"})
 
         self.table.configure(columns = list(headings))
 
-        for column, heading in headings.items():
+        for column, heading in headings.items(): #Customize the columns width
             self.table.heading(column, text = heading)
+            width = 350 if column == "reason" else 150
+            if column == "problem":
+                width = 180
             self.table.column(column,
-                            width=180 if column == "problem" else 150,
-                            minwidth=80,
-                            stretch=False)
-
-        for _, row in self.summary.iterrows():
-            values = []
-            for column in headings:
-                value = row[column]
-                if pd.isna(value):
-                    text = "N/A"
-                elif column in ("problem", "method"):
-                    text = str(value)
-                elif column == "N":
-                    text = str(int(value))
-                else:
-                    text = f"{float(value):.8g}"
-                values.append(text)
-            self.table.insert("", "end", values = values)
+                            width = width,
+                            minwidth = 80,
+                            stretch = False)
+        if data is not None:
+            for _, row in data.iterrows():
+                values = []
+                for column in headings:
+                    value = row[column]
+                    if column == "passes":
+                        text = "Yes" if value else "No"
+                    elif pd.isna(value):
+                        text = "N/A"
+                    elif column in ("problem", "method", "reason"):
+                        text = str(value)
+                    elif column == "N":
+                        text = str(int(value))
+                    else:
+                        text = f"{float(value):.8g}"
+                    values.append(text)
+                self.table.insert("", "end", values = values)
 
     def CreateRequirements(self):
         frame = self.requirements_frame
@@ -298,7 +345,12 @@ class RecommendationTab(ttk.Frame):
         self.last_recommendation = None
         if self.summary is not None and not self.summary.empty:
             self.result_text.set("Requirements changed. Click Find recommendation.")
+        self.ShowSummary()
 
+    def RefreshReportControls(self): 
+        available = self.last_recommendation is not None and not self.IsLoading()
+        self.candidate_filter_box.configure(state = "readonly" if available else "disabled")
+        #self.export_button.configure(state = "normal" if available else "disabled")
 
     def RefreshRequirementControls(self): #Refresh boxes and checks
         ready = self.RequirementsReady()
@@ -316,6 +368,7 @@ class RecommendationTab(ttk.Frame):
 
         self.find_button.configure(state =  "normal" if ready else "disabled")
         self.reset_button.configure(state = "normal" if ready else "disabled")
+        self.RefreshReportControls()
 
 
     def OnToleranceToggle(self):
@@ -457,5 +510,15 @@ class RecommendationTab(ttk.Frame):
 
         lines.append("Ranking uses recorded runtimes; results apply to this tested run.")
 
+        result["requirements"] = {"problem": self.selection_vars["Problem"].get(),
+            "N": None if n_text == "Any tested value" else int(n_text),
+            "dt": None if dt_text == "Any tested value" else float(dt_text),
+            "l2_tolerance": float(self.tolerance_values["l2"].get()) if self.tolerance_enabled["l2"].get() else None,
+            "norm_tolerance": float(self.tolerance_values["norm"].get()) if self.tolerance_enabled["norm"].get() else None,
+            "energy_tolerance": float(self.tolerance_values["energy"].get()) if self.tolerance_enabled["energy"].get() else None}
+
         self.result_text.set("\n".join(lines))
         self.last_recommendation = result
+        self.candidate_filter.set("All candidates")
+        self.ShowSummary()
+        self.RefreshReportControls()
