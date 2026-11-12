@@ -23,6 +23,8 @@ from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
 from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock, 
                         ListRecoveryFolders, IsRecoveryFolder, DeleteRecoveryFolder)
 from RecommendationTab import RecommendationTab
+from Tooltips import AddToolTip
+from TooltipHelpText import NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, BENCHMARK_HELP
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -232,13 +234,15 @@ class MainWindow(tk.Tk):
         self.benchmark_n_values = tk.StringVar(value="500, 1000")
         self.benchmark_dt_values = tk.StringVar(value="1, 2")
 
-        for row, (label, variable) in enumerate([
-            ("N values:", self.benchmark_n_values),
-            ("dt values:", self.benchmark_dt_values)
-        ]):
-            ttk.Label(self.benchmark_config_frame, text=label).grid(row=row, column=0, padx=(0,8), pady=3, sticky="w")
-            ttk.Entry(self.benchmark_config_frame, textvariable=variable).grid(row=row, column=1, pady=3, sticky="ew")
+        for row, (label, variable, help_key) in enumerate([
+                                ("N values:", self.benchmark_n_values, "N_values"),
+                                ("dt values:", self.benchmark_dt_values, "dt_values")]):
 
+            ttk.Label(self.benchmark_config_frame, text=label).grid(row=row, column=0, padx=(0,8), pady=3, sticky="w")
+            entry = ttk.Entry(self.benchmark_config_frame, textvariable=variable)
+            entry.grid(row = row, column = 1, pady = 3, sticky = "ew")
+            AddToolTip(entry, BENCHMARK_HELP[help_key])
+            
         ttk.Label(self.benchmark_config_frame, text= "Seperate values with commas.").grid(row=2, column=1, sticky="w")
 
         #Make numerical input frame
@@ -252,6 +256,7 @@ class MainWindow(tk.Tk):
             entry = ttk.Entry(numerical_frame)
             entry.grid(row=row, column=1, sticky="ew", pady=2)
             self.benchmark_numerical_entries[name] = entry
+            AddToolTip(entry, NUMERICAL_HELP[name])
         
         #Make new self field for wave/ pot types cus self.wave_type depends on entry in simulation tab
         self.benchmark_wave_type, self.benchmark_wave_entries, self.RefreshBenchmarkWaveFields = ( 
@@ -273,12 +278,16 @@ class MainWindow(tk.Tk):
         problems_frame.columnconfigure(1, weight = 1)
 
         ttk.Label(problems_frame, text = "Problem name").grid(row = 0, column = 0, sticky = "w", padx = (0, 8))
-        ttk.Entry(problems_frame, textvariable = self.benchmark_problem_name).grid(row=0, column=1, sticky="ew")
+        problem_name_entry = ttk.Entry(problems_frame, textvariable = self.benchmark_problem_name)
+        problem_name_entry.grid(row=0, column=1, sticky="ew")
+        AddToolTip(problem_name_entry, BENCHMARK_HELP["problem_name"])
+        
         ttk.Button(problems_frame, text = "Add / Update",
                    command = self.AddBenchmarkProblem).grid(row = 0, column = 2, padx = (8,0))
 
         self.benchmark_problem_list = tk.Listbox(problems_frame, height = 5, exportselection = False)
         self.benchmark_problem_list.grid(row = 1, column = 0, columnspan = 3, sticky = "ew", pady = 6)
+        AddToolTip(self.benchmark_problem_list, BENCHMARK_HELP["problem_list"])
 
         ttk.Button(problems_frame, text = "Load selected into form", command = self.LoadSelectedBenchmarkProblem).grid(row = 2, column = 0, columnspan = 2, sticky = 'w')
         ttk.Button(problems_frame, text = "Remove selected", command = self.RemoveBenchmarkProblem).grid(row = 2, column = 2, sticky = 'e')
@@ -292,7 +301,9 @@ class MainWindow(tk.Tk):
         self.benchmark_run_name = tk.StringVar()
 
         ttk.Label(self.benchmark_run_config_frame, text="Configuration name").grid(row=0, column=0, sticky="w", padx=(0, 8))
-        ttk.Entry(self.benchmark_run_config_frame,textvariable=self.benchmark_run_name).grid(row=0, column=1, sticky="ew")
+        run_name_entry = ttk.Entry(self.benchmark_run_config_frame,textvariable=self.benchmark_run_name)
+        run_name_entry.grid(row=0, column=1, sticky="ew")
+        AddToolTip(run_name_entry, BENCHMARK_HELP["configuration_name"])
         ttk.Button(self.benchmark_run_config_frame,text="Save run configuration",command=self.OnSaveBenchmarkConfig).grid(row=0, column=2, padx=(8, 0))
 
         self.benchmark_saved_config = tk.StringVar()
@@ -303,6 +314,7 @@ class MainWindow(tk.Tk):
         self.benchmark_config_dropdown = ttk.Combobox(self.benchmark_run_config_frame, textvariable=self.benchmark_saved_config, state="readonly")
         self.benchmark_config_dropdown.grid(row=1, column=1, sticky="ew", pady=5)
         self.benchmark_config_dropdown.bind("<<ComboboxSelected>>", self.OnBenchmarkConfigSelected)
+        AddToolTip(self.benchmark_config_dropdown, BENCHMARK_HELP["saved_configuration"])
 
         #Button to load benchmark
         ttk.Button(self.benchmark_run_config_frame, text = "Load", command = self.OnLoadBenchmarkConfig).grid(row = 1, column = 2, padx = (8,0), pady = 5)
@@ -1030,6 +1042,16 @@ class MainWindow(tk.Tk):
         dropdown = ttk.Combobox(frame, textvariable=selected, values= list(definitions), state="readonly")
         dropdown.grid(row=0, column=0, sticky="ew")
 
+        #Get the tooltip in
+        if title == "Wave Function":
+            parameter_help = WAVE_HELP
+            selection_help = BENCHMARK_HELP["wave_type"]
+        else:
+            parameter_help = POTENTIAL_HELP
+            selection_help = BENCHMARK_HELP["potential_type"]
+
+        AddToolTip(dropdown, selection_help)
+
         fields = ttk.Frame(frame)
         fields.grid(row=1, column=0, sticky="ew")
         fields.columnconfigure(1, weight=1)
@@ -1053,6 +1075,7 @@ class MainWindow(tk.Tk):
                 entry = ttk.Entry(fields)
                 entry.grid(row=index, column=1, sticky="ew", pady=2)
                 entries[name] = entry
+                AddToolTip(entry, parameter_help[selected.get()][name])
 
         dropdown.bind("<<ComboboxSelected>>", ShowParameters)
         ShowParameters()
@@ -1154,7 +1177,9 @@ class MainWindow(tk.Tk):
         #Save configuration 
         ttk.Label(frame, text="Configuration Name:").grid(row=0, column=0, padx=5, sticky="w")
         self.config_name = tk.StringVar()
-        ttk.Entry(frame, textvariable = self.config_name).grid(row=0, column=1, padx=5, pady=3, sticky = "ew")
+        name_entry = ttk.Entry(frame, textvariable = self.config_name)
+        name_entry.grid(row=0, column=1, padx=5, pady=3, sticky = "ew")
+        AddToolTip(name_entry, SIMULATION_HELP["configuration_name"])
         ttk.Button(frame, text="Save", command=self.OnSaveConfig).grid(row=0, column=2, padx=5)
 
         #Load configuration
@@ -1164,6 +1189,7 @@ class MainWindow(tk.Tk):
         self.config_dropdown.grid(row=1, column=1, padx=5, pady = 3, sticky="ew")
         #stick the open folder option to top
         self.config_dropdown.bind("<<ComboboxSelected>>", self.OnConfigSelected)
+        AddToolTip(self.config_dropdown, SIMULATION_HELP["saved_configuration"])
         ttk.Button(frame, text="Load", command=self.OnLoadConfig).grid(row=1, column=2, padx=5)
 
         try: 
@@ -1490,33 +1516,31 @@ class MainWindow(tk.Tk):
         mode_row = ttk.Frame(self.wave_frame)
         mode_row.pack(fill="x", padx=5, pady=5)
 
-        ttk.Radiobutton(
-            mode_row,
-            text="Preset",
-            variable=self.wave_input_mode,
-            value="Preset",
-            command=self.OnWaveInputModeChanged
-        ).pack(side="left")
+        preset_button = ttk.Radiobutton(mode_row,
+                    text="Preset",
+                    variable=self.wave_input_mode,
+                    value="Preset",
+                    command=self.OnWaveInputModeChanged)
+        preset_button.pack(side="left")
+        AddToolTip(preset_button, SIMULATION_HELP["preset_mode"])
 
-        ttk.Radiobutton(
-            mode_row,
-            text="Expression",
-            variable=self.wave_input_mode,
-            value="Expression",
-            command=self.OnWaveInputModeChanged
-        ).pack(side="left", padx=10)
+        expression_button = ttk.Radiobutton(mode_row,
+                    text="Expression",
+                    variable=self.wave_input_mode,
+                    value="Expression",
+                    command=self.OnWaveInputModeChanged)
+        expression_button.pack(side="left", padx=10)
+        AddToolTip(expression_button, SIMULATION_HELP["expression_mode"])
 
         self.wave_preset_frame = ttk.Frame(self.wave_frame)
         self.wave_preset_frame.pack(fill="x")
 
-        self.wave_dropdown = ttk.Combobox(
-            self.wave_preset_frame,
-            textvariable=self.wave_type,
-            values=list(WAVE_PARAMETERS.keys()),
-            state="readonly"
-        )
-
+        self.wave_dropdown = ttk.Combobox(self.wave_preset_frame,
+                                    textvariable=self.wave_type,
+                                    values=list(WAVE_PARAMETERS.keys()),
+                                    state="readonly")
         self.wave_dropdown.pack(fill="x",padx=5,pady=5)
+        AddToolTip(self.wave_dropdown, SIMULATION_HELP["wave_type"])
 
         self.wave_parameter_frame = ttk.Frame(self.wave_preset_frame)
         self.wave_parameter_frame.pack(fill="x")
@@ -1533,8 +1557,8 @@ class MainWindow(tk.Tk):
         ttk.Label(self.wave_expression_frame,text="ψ(x,0) =").pack(anchor="w")
 
         self.wave_expression_entry = ttk.Entry(self.wave_expression_frame)
-
         self.wave_expression_entry.pack(fill="x",padx=5,pady=5)
+        AddToolTip(self.wave_expression_entry, SIMULATION_HELP["expression"])
 
     def OnWaveInputModeChanged(self):
 
@@ -1578,6 +1602,7 @@ class MainWindow(tk.Tk):
             entry.pack(side="left",fill="x",expand=True)
 
             self.wave_entries[name] = entry
+            AddToolTip(entry, WAVE_HELP[selected_wave][name])
 
     #Methods for the potential input frame --------------------
     def CreatePotentialSection(self):
@@ -1587,14 +1612,12 @@ class MainWindow(tk.Tk):
         self.potential_frame.pack(fill="x", pady=5)
         self.potential_type = tk.StringVar()
 
-        dropdown = ttk.Combobox(
-            self.potential_frame,
-            textvariable=self.potential_type,
-            values=list(POTENTIAL_PARAMETERS.keys()),
-            state="readonly"
-        )
-
+        dropdown = ttk.Combobox(self.potential_frame,
+                            textvariable=self.potential_type,
+                            values=list(POTENTIAL_PARAMETERS.keys()),
+                            state="readonly")
         dropdown.pack(fill="x",padx=5,pady=5)
+        AddToolTip(dropdown, SIMULATION_HELP["potential_type"])
 
         self.potential_parameter_frame = (ttk.Frame(self.potential_frame))
 
@@ -1636,6 +1659,7 @@ class MainWindow(tk.Tk):
             entry.pack(side="left",fill="x",expand=True)
 
             self.potential_entries[name] = entry
+            AddToolTip(entry, POTENTIAL_HELP[selected][name])
 
     #Methods for the numerical input frame --------------------
     def CreateNumericalSection(self):
@@ -1668,6 +1692,7 @@ class MainWindow(tk.Tk):
             entry.pack(side="left",fill="x",expand=True)
 
             self.numerical_entries[name] = entry
+            AddToolTip(entry, NUMERICAL_HELP[name])
 
         #Solver choice
         solver_row = ttk.Frame(frame)
@@ -1678,14 +1703,12 @@ class MainWindow(tk.Tk):
 
         self.solver_type = tk.StringVar(value="SSF")
         #Drop down list for Solver
-        solver_dropdown = ttk.Combobox(
-            solver_row,
-            textvariable=self.solver_type,
-            values=["Crank-Nicolson", "SSF"],
-            state="readonly"
-        )
-
+        solver_dropdown = ttk.Combobox(solver_row,
+                            textvariable=self.solver_type,
+                            values=["Crank-Nicolson", "SSF"],
+                            state="readonly")
         solver_dropdown.pack(side="left",fill="x",expand=True)
+        AddToolTip(solver_dropdown, SIMULATION_HELP["solver"])
 
         #Run button
         self.run_button = ttk.Button(frame,text="Run Simulation",command=self.OnRunSimulation)

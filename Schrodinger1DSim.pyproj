@@ -12,6 +12,7 @@
     <Name>Schrodinger1DSim</Name>
     <RootNamespace>Schrodinger1DSim</RootNamespace>
     <InterpreterId>Global|PythonCore|3.14</InterpreterId>
+    <TestFramework>Pytest</TestFramework>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -40,6 +41,7 @@
     <Compile Include="DesktopUI\ResultTable.py" />
     <Compile Include="DesktopUI\Simulation.py" />
     <Compile Include="DesktopUI\TestRecommendation.py" />
+    <Compile Include="DesktopUI\Tooltips.py" />
     <Compile Include="DesktopUI\WaveAnimation.py" />
     <Compile Include="DesktopUI\WaveFuncParser.py" />
     <Compile Include="potential.py" />
@@ -77,6 +79,7 @@
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 07, 2026_SSF.csv" />
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 19, 2026_SSF.csv" />
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_September 22, 2026.csv" />
+    <Content Include="DesktopUI\TooltipHelpText.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
