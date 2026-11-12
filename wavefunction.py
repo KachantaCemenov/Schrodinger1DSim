@@ -161,7 +161,7 @@ class WaveFunction:
     n is wave number, n = 0, 1, 2, ...
 
     In a harmonic potential the shape should hold
-    """
+    """ 
     @classmethod
     def HarmonicOscillatorEigenstate(cls, grid, n: int, mass=1.0, omega=1.0, hbar=1.0, center=0.0):
         x = grid.x

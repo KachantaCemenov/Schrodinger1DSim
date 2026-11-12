@@ -35,6 +35,7 @@
     <Compile Include="DesktopUI\main.py" />
     <Compile Include="DesktopUI\MainWindow.py" />
     <Compile Include="DesktopUI\ParameterDefinition.py" />
+    <Compile Include="DesktopUI\Recommendation.py" />
     <Compile Include="DesktopUI\ResultTable.py" />
     <Compile Include="DesktopUI\Simulation.py" />
     <Compile Include="DesktopUI\WaveAnimation.py" />
