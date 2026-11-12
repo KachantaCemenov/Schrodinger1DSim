@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
+from HelpWindowText import HELP_TOPICS
 
-HELP_TOPICS = [
+"""HELP_TOPICS = [
     (
         "Topic 1",
         "TODO: Write the first topic here.\n\n"
@@ -20,7 +21,7 @@ HELP_TOPICS = [
         "Topic 4",
         "TODO: Write the fourth topic here.",
     ),
-]
+]"""
 
 
 class HelpWindow(tk.Toplevel):
@@ -42,7 +43,7 @@ class HelpWindow(tk.Toplevel):
             tab = ttk.Frame(notebook, padding=8)
             notebook.add(tab, text=title)
 
-            text = ScrolledText(tab, wrap = "word", font = ("Segoe UI", 11),, padx = 12, pady = 12,
+            text = ScrolledText(tab, wrap = "word", font = ("Segoe UI", 11), padx = 12, pady = 12,
                 relief="flat", borderwidth = 0, width = 60, height = 20)
             text.pack(fill="both", expand=True)
 
