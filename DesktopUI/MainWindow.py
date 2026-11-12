@@ -22,6 +22,7 @@ from Benchmark import (BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBen
 from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
 from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock, 
                         ListRecoveryFolders, IsRecoveryFolder, DeleteRecoveryFolder)
+from RecommendationTab import RecommendationTab
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -65,6 +66,9 @@ class MainWindow(tk.Tk):
         self.CreateSimulationTab()
         self.CreateBenchmarkTab()
         self.CreateReadBenchmarkTab()
+        #Create Recommendation Tab
+        self.recommendation_view = RecommendationTab(self.recommendation_tab,get_loaded_folder=lambda: self.benchmark_saved_folder)
+        self.recommendation_view.pack(fill="both", expand=True)
 
         """
         #Animation testing
@@ -1822,20 +1826,24 @@ class MainWindow(tk.Tk):
 
     #Method for handling closing window
     def OnClose(self):
+        if self.recommendation_view.IsLoading():
+            messagebox.showinfo("Benchmark analysis running", "Please wait until the benchmark summary has finished loading.", parent = self)
+            return
+
         run_pending = (self.benchmark_future is not None and self.benchmark_manifest is None)
         save_pending = self.benchmark_save_future is not None
 
         if run_pending or save_pending:
             messagebox.showinfo("Benchmark busy",
             "A benchmark is still running or its results are being saved.\n\n"
-            "Please wait until it finishes or stop it before closing the application.", parent=self)
+            "Please wait until it finishes or stop it before closing the application.", parent = self)
             return
 
         if self.benchmark_temp_directory is not None:
             discard = messagebox.askyesno("Unsaved benchmark results",
                 "The completed benchmark has unsaved results.\n\n"
                 "Discard these results and close?\n\n"
-                "Choose No to return and save them.", parent=self)
+                "Choose No to return and save them.", parent = self)
             if not discard:
                 return
 
@@ -1843,7 +1851,7 @@ class MainWindow(tk.Tk):
                 self.benchmark_temp_directory.cleanup()
             except OSError as error:
                 messagebox.showerror("Cannot remove temporary results",
-                    f"{error}\n\nThe application will remain open.", parent=self)
+                    f"{error}\n\nThe application will remain open.", parent = self)
                 return
 
             self.benchmark_temp_directory = None
