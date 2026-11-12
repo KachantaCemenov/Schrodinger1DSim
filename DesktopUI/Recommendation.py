@@ -179,3 +179,107 @@ def BuildRecommendationSummary(folder, progress=None):
 
     return manifest, summary
 
+
+def FindRecommendation(summary, problem, N=None, dt=None, l2_tolerance=None, norm_tolerance=None, energy_tolerance=None):
+    """
+    None - constraint is disabled
+
+    Returns:
+        candidates: tested candidates with pass/fail explanations
+        eligible: qualifying candidates, sorted by runtime
+        best: fastest qualifying row, or None
+        best_by_method: best qualifying CN and SSF rows
+    """
+
+    missing = set(SUMMARY_COLUMNS).difference(summary.columns)
+    if missing:
+        raise ValueError(f"Summary called in FindRecommendation is missing columns: {', '.join(sorted(missing))}")
+    if not isinstance(problem, str) or not problem.strip():
+        raise ValueError("Select a problem.")
+    if N is not None:
+        if not isinstance(N, (int, np.integer)):
+            raise ValueError("N must be an integer.")
+        if N < 3:
+            raise ValueError("N must be at least 3.")
+
+    def ValidateNumber(value, label, strictly_positive=False):
+        if value is None:
+            return None
+        try:
+            value = float(value)
+        except (ValueError, TypeError, OverflowError):
+            raise ValueError(f"{label} must be a number.") from None
+
+        if not math.isfinite(value):
+            raise ValueError(f"{label} must be finite.")
+
+        if strictly_positive and value <= 0:
+            raise ValueError(f"{label} must be positive.")
+        if not strictly_positive and value < 0:
+            raise ValueError(f"{label} cannot be negative.")
+
+        return value
+
+    dt = ValidateNumber(dt, "dt", strictly_positive=True)
+    l2_tolerance = ValidateNumber(l2_tolerance, "L2 tolerance")
+    norm_tolerance = ValidateNumber(norm_tolerance, "Norm tolerance")
+    energy_tolerance = ValidateNumber(energy_tolerance, "Energy tolerance")
+
+    candidates = summary.loc[summary["problem"] == problem].copy()
+
+    if N is not None:
+        candidates = candidates.loc[candidates["N"] == N].copy()
+
+    if dt is not None:
+        candidates = candidates.loc[candidates["dt"] == dt].copy()
+
+    def RejectionReason(row):
+        reasons = []
+
+        if row["method"] not in ("CN", "SSF"):
+            reasons.append("Unknown solver")
+
+        runtime = row["runtime"]
+        if not np.isfinite(runtime) or runtime <= 0:
+            reasons.append("Invalid runtime")
+
+        constraints = (("max_norm_error", norm_tolerance, "Norm drift"),
+                    ("max_energy_error", energy_tolerance, "Energy drift"))
+
+        for column, tolerance, label in constraints:
+            value = row[column]
+            # Invalid values removes the candidate even if not selected
+            if not np.isfinite(value) or value < 0:
+                reasons.append(f"{label} is invalid")
+            elif tolerance is not None and value > tolerance:
+                reasons.append(f"{label} exceeds tolerance")
+
+        if l2_tolerance is not None:
+            value = row["max_L2_error"]
+            if not row["analytical_available"]:
+                reasons.append("L2 error unavailable")
+            elif not np.isfinite(value) or value < 0:
+                reasons.append("L2 error is invalid")
+            elif value > l2_tolerance:
+                reasons.append("L2 error exceeds tolerance")
+
+        return "; ".join(reasons)
+
+    reasons = [RejectionReason(row)for _, row in candidates.iterrows()]
+    candidates["reason"] = reasons
+    candidates["passes"] = [reason == "" for reason in reasons]
+    candidates = candidates.sort_values(["runtime", "N", "dt", "method"], ignore_index=True)
+    eligible = candidates.loc[candidates["passes"]].reset_index(drop=True)
+
+    best = None if eligible.empty else eligible.iloc[0].copy()
+
+    best_by_method = {}
+    for method in ("CN", "SSF"):
+        method_rows = eligible.loc[eligible["method"] == method]
+        best_by_method[method] = (None if method_rows.empty else method_rows.iloc[0].copy())
+
+    return {"candidates": candidates,
+            "eligible": eligible,
+            "best": best,
+            "best_by_method": best_by_method}
+
