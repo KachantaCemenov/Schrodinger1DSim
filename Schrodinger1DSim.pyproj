@@ -33,6 +33,7 @@
     <Compile Include="DesktopUI\BenchmarkRecovery.py" />
     <Compile Include="DesktopUI\BenchmarkResults.py" />
     <Compile Include="DesktopUI\ConfigStore.py" />
+    <Compile Include="DesktopUI\HelpWindow.py" />
     <Compile Include="DesktopUI\main.py" />
     <Compile Include="DesktopUI\MainWindow.py" />
     <Compile Include="DesktopUI\ParameterDefinition.py" />

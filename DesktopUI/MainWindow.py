@@ -25,6 +25,8 @@ from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock,
 from RecommendationTab import RecommendationTab
 from Tooltips import AddToolTip
 from TooltipHelpText import NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, BENCHMARK_HELP
+from HelpWindow import HelpWindow
+
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -43,11 +45,30 @@ class MainWindow(tk.Tk):
 
         self.geometry("1100x950")
         self.current_results = None
+        self.help_window = None
 
+        self.CreateTopBar()
         self.CreateTabs()
 
         self.protocol("WM_DELETE_WINDOW", self.OnClose) #handle closing amid running simulation/ benchmark
         self.after_idle(self.CheckBenchmarkRecovery)
+    
+    def CreateTopBar(self):
+        top_bar = ttk.Frame(self, padding=(8, 4))
+        top_bar.pack(side="top", fill="x")
+
+        ttk.Button(top_bar, text="Help", command=self.OpenHelp).pack(side="left")
+
+
+    def OpenHelp(self):
+        if self.help_window is not None and self.help_window.winfo_exists():
+            self.help_window.deiconify()
+            self.help_window.lift()
+            self.help_window.focus_set()
+            return
+
+        self.help_window = HelpWindow(self)
+
 
     def CreateTabs(self):
         self.notebook = ttk.Notebook(self)
