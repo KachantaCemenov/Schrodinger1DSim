@@ -346,6 +346,7 @@ class RecommendationTab(ttk.Frame):
         if self.summary is not None and not self.summary.empty:
             self.result_text.set("Requirements changed. Click Find recommendation.")
         self.ShowSummary()
+        self.RefreshReportControls()
 
     def RefreshReportControls(self): 
         available = self.last_recommendation is not None and not self.IsLoading()

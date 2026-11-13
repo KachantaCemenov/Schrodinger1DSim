@@ -1791,8 +1791,10 @@ class MainWindow(tk.Tk):
 
         if not path:
             return
-
-        self.current_results.to_csv(path,index=False)
+        try:
+            self.current_results.to_csv(path,index=False)
+        except OSError as e:
+            messagebox.showerror("Cannot save simulation results", str(e), parent = self)
 
     #For detecting empty and wrong entries then convert
     def ReadEntry(self, entry, name, expected_type):
