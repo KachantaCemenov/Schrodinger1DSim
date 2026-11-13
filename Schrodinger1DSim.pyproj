@@ -41,6 +41,7 @@
     <Compile Include="DesktopUI\Recommendation.py" />
     <Compile Include="DesktopUI\RecommendationTab.py" />
     <Compile Include="DesktopUI\ResultTable.py" />
+    <Compile Include="DesktopUI\ScrollableFrame.py" />
     <Compile Include="DesktopUI\Simulation.py" />
     <Compile Include="DesktopUI\TestRecommendation.py" />
     <Compile Include="DesktopUI\Tooltips.py" />

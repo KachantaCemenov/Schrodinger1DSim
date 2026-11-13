@@ -161,7 +161,8 @@ def RunSimulation(config):
             raise ValueError("Infinite square well potential requires x_min < x_left < x_right < x_max.")
 
         #Find the grid point the wall positions land on
-        wall_indicies = (np.array([left, right]) - config.x_min) / display_grid.dx 
+        wall_indicies = (np.array([left, right]) - config.x_min) / (config.x_max - config.x_min) * (len(display_grid.x) - 1)
+
         nearest = np.round(wall_indicies).astype(int)
 
         if not np.allclose(wall_indicies, nearest, rtol = 0, atol = 1e-10):

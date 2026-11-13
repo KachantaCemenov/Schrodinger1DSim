@@ -26,6 +26,7 @@ from RecommendationTab import RecommendationTab
 from Tooltips import AddToolTip
 from TooltipHelpText import NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, BENCHMARK_HELP
 from HelpWindow import HelpWindow
+from ScrollableFrame import ScrollableFrame
 
 
 class MainWindow(tk.Tk):
@@ -165,8 +166,14 @@ class MainWindow(tk.Tk):
         top_frame.columnconfigure(1, weight=2)
         top_frame.rowconfigure(0, weight=1)
 
+        """ Make this input frame scrollable
         self.input_frame = ttk.Frame(top_frame)
         self.input_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        """
+        self.simulation_input_scroll = ScrollableFrame(top_frame)
+        self.simulation_input_scroll.grid(row=0,column=0,
+                                         sticky="nsew", padx=10, pady=10)
+        self.input_frame = self.simulation_input_scroll.content
 
         self.result_frame = ttk.Frame(top_frame)
         self.result_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
