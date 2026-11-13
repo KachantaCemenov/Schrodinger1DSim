@@ -20,6 +20,8 @@ class WaveAnimation(ttk.Frame):
         self.x = None
         self.times = None
         self.densities = None
+        self.momentum_grid = None
+        self.momentum_densities = None  
 
         controls = ttk.Frame(self)
         controls.pack(fill="x")
@@ -35,8 +37,11 @@ class WaveAnimation(ttk.Frame):
         self.time_text = tk.StringVar(value="No simulation loaded")
         ttk.Label(controls,textvariable=self.time_text).pack(side="left", padx=10)
 
-        self.figure = Figure(figsize=(8, 2.6), dpi=100)
-        self.axes = self.figure.add_subplot(111)
+        #Two subplots for position and momentum
+        self.figure = Figure(figsize=(8, 5.5), dpi=100)
+        self.axes = self.figure.add_subplot(211)
+        self.momentum_axes = self.figure.add_subplot(212)
+        #self.axes = self.figure.add_subplot(111)
         self.axes.set_xlabel("Position x")
         self.axes.set_ylabel(r"$|\psi(x,t)|^2$")
 
@@ -44,7 +49,7 @@ class WaveAnimation(ttk.Frame):
 
         self.axes.set_ylabel(r"$|\psi(x,t)|^2$", color = "tab:blue")
         self.axes.tick_params(axis = "y", labelcolor = "tab:blue")
-
+        #Potential
         self.potential_axes = self.axes.twinx()
         self.potential_axes.set_ylabel("Potential energy V(x)", color = "tab:orange")
         self.potential_axes.tick_params(axis = "y", labelcolor = "tab:orange")
@@ -52,6 +57,16 @@ class WaveAnimation(ttk.Frame):
         self.potential_axes.grid(False)
 
         self.potential_line, = self.potential_axes.plot([], [], color = "tab:orange", linestyle = "--", linewidth = 1.5)
+
+        self.axes.set_title("Position distribution")
+        #Momentum
+        self.momentum_axes.set_title("Momentum distribution")
+        self.momentum_axes.set_xlabel("Momentum p")
+        self.momentum_axes.set_ylabel(r"$|\phi(p,t)|^2$")
+        self.momentum_axes.ticklabel_format(axis = "both", style = "sci", scilimits = (-3, 3),
+            useOffset = False)
+        self.momentum_line, = self.momentum_axes.plot([], [], color = "tab:green", linewidth = 2,
+            animated = True)
 
         self.wall_artists = []
 
@@ -66,12 +81,14 @@ class WaveAnimation(ttk.Frame):
 
         self.bind("<Destroy>", self.OnDestroy, add="+")
 
-    def LoadData(self, x, times, densities, potential_values):
+    def LoadData(self, x, times, densities, potential_values, momentum_grid, momentum_densities):
         #Load the array of psi values
         x = np.asarray(x, dtype=float)
         times = np.asarray(times, dtype=float)
         densities = np.asarray(densities, dtype=float)
         potential_values = np.asarray(potential_values, dtype=float)
+        momentum_grid = np.asarray(momentum_grid, dtype=float)
+        momentum_densities = np.asarray(momentum_densities, dtype=float)
 
         if x.ndim != 1 or x.size < 2:
             raise ValueError("x must contain at least two grid points.")
@@ -82,11 +99,7 @@ class WaveAnimation(ttk.Frame):
         if densities.shape != (times.size, x.size):
             raise ValueError("Probability density dimensions are invalid.")
 
-        if not (
-            np.all(np.isfinite(x))
-            and np.all(np.isfinite(times))
-            and np.all(np.isfinite(densities))
-        ):
+        if not (np.all(np.isfinite(x)) and np.all(np.isfinite(times)) and np.all(np.isfinite(densities))):
             raise ValueError("Animation data must be finite.")
 
         if np.any(np.diff(x) <= 0):
@@ -97,7 +110,7 @@ class WaveAnimation(ttk.Frame):
 
         if np.any(densities < 0):
             raise ValueError("Probability densities cannot be negative.")
-
+        #Check the potential
         if potential_values.shape != x.shape:
             raise ValueError("Potential must have one value per spatial grid point.")
 
@@ -106,14 +119,31 @@ class WaveAnimation(ttk.Frame):
 
         if not np.any(np.isfinite(potential_values)):
             raise ValueError("Potential must contain a finite region.")
+        #Check the momentum
+        if momentum_grid.ndim != 1 or momentum_grid.size < 2:
+            raise ValueError("Momentum grid must contain at least two points.")
 
+        if momentum_densities.shape != (times.size, momentum_grid.size):
+            raise ValueError("Momentum density dimensions are invalid.")
+
+        if not (np.all(np.isfinite(momentum_grid)) and np.all(np.isfinite(momentum_densities))):
+            raise ValueError("Momentum animation data must be finite.")
+
+        if np.any(np.diff(momentum_grid) <= 0):
+            raise ValueError("Momentum grid must be strictly increasing.")
+
+        if np.any(momentum_densities < 0):
+            raise ValueError("Momentum densities cannot be negative.")
 
         self.Pause()
 
         self.x = x
         self.times = times
         self.densities = densities
+        self.momentum_grid = momentum_grid
+        self.momentum_densities = momentum_densities
         self.line.set_data(self.x, self.densities[0])
+        self.momentum_line.set_data(self.momentum_grid, self.momentum_densities[0])
         self.background = None
 
         self.axes.set_xlim(x[0], x[-1])
@@ -121,6 +151,9 @@ class WaveAnimation(ttk.Frame):
         # Fixed limits prevent the vertical scale jumping during playback.
         peak = float(densities.max())
         self.axes.set_ylim(0, peak * 1.1 if peak > 0 else 1)
+        self.momentum_axes.set_xlim(self.momentum_grid[0], self.momentum_grid[-1])
+        momentum_peak = float(self.momentum_densities.max())
+        self.momentum_axes.set_ylim(0, momentum_peak * 1.1 if momentum_peak > 0 else 1)
         self.UpdatePotential(x, potential_values)
         self.figure.tight_layout()
         self.background = None
@@ -138,6 +171,7 @@ class WaveAnimation(ttk.Frame):
 
         #Only vertical values change
         self.line.set_ydata(self.densities[self.frame_index])
+        self.momentum_line.set_ydata(self.momentum_densities[self.frame_index])
 
         self.time_text.set(f"t = {self.times[self.frame_index]:.6g}")
         self.DrawCurrentFrame()
@@ -184,11 +218,12 @@ class WaveAnimation(ttk.Frame):
             self.after_id = None
 
     def OnCanvasDraw(self, event):
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.background = self.canvas.copy_from_bbox(self.figure.bbox)
 
         if self.densities is not None:
             self.axes.draw_artist(self.line)
-            self.canvas.blit(self.axes.bbox)
+            self.momentum_axes.draw_artist(self.momentum_line)
+            self.canvas.blit(self.figure.bbox)
 
 
     def OnCanvasResize(self, event):
@@ -208,13 +243,13 @@ class WaveAnimation(ttk.Frame):
             return
 
         if self.background is None:
-            # OnCanvasDraw will capture the background and draw the curve.
             self.canvas.draw_idle()
             return
 
         self.canvas.restore_region(self.background)
         self.axes.draw_artist(self.line)
-        self.canvas.blit(self.axes.bbox)
+        self.momentum_axes.draw_artist(self.momentum_line)
+        self.canvas.blit(self.figure.bbox)
 
     def UpdatePotential(self, x, values):
         # Remove wall from a previously loaded simulation.

@@ -200,7 +200,17 @@ def RunSimulation(config):
     frame_steps = np.linspace(0, num_steps, min(num_steps + 1, 400), dtype=int)
     frame_lookup = set(frame_steps)
     densities = []
+    momentum_densities = []
     rows = []
+
+    #Use the same spatial grid for every frame
+    display_count = len(display_grid.x)
+    display_dx = display_grid.dx
+
+    #FFT the grid, momentum axis is p = hbar*k, unit kg*m/s
+    momentum_grid = (2 * np.pi * config.hbar * np.fft.fftshift(np.fft.fftfreq(display_count, d = display_dx)))
+
+    momentum_spacing = (2 * np.pi * config.hbar / (display_count * display_dx))
 
     for step in range(num_steps + 1):
         time = step * config.dt
@@ -229,13 +239,24 @@ def RunSimulation(config):
         rows.append((time, wave.Norm(), wave.Expectation_x(), momentum, energy))
 
         if step in frame_lookup:
-            density = np.zeros_like(display_grid.x, dtype=float)
-            density[active] = wave.ProbabilityDensity()
-            densities.append(density) #Only update the active part
+            display_psi = np.zeros(display_count, dtype = complex)
+            display_psi[active] = wave.psi
+
+            densities.append(np.abs(display_psi) ** 2)
+            #Perform FFT in here only for the saved frames
+            transformed = np.fft.fftshift(np.fft.fft(display_psi, norm = "ortho"))
+            #Probability density per unit momentum.
+            #sum(momentum_density) * dp equals sum(position_density) * dx.
+            momentum_density = (np.abs(transformed) ** 2 * display_dx / momentum_spacing)
+
+            momentum_densities.append(momentum_density)
+
         if step < num_steps:
             solver.Step(wave) #propagate the wave function to the next time step
 
     res = pd.DataFrame(rows, columns = ["Time", "Norm", "<x>", "<p>", "<E>"])
     display_potential = full_potential.values if is_well else potential.values
 
-    return res, display_grid.x, np.array(frame_steps) * config.dt, np.array(densities), display_potential.copy()
+    return (res, display_grid.x, np.array(frame_steps) * config.dt, 
+            np.array(densities), display_potential.copy(), 
+            momentum_grid, np.array(momentum_densities))

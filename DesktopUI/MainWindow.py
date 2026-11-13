@@ -176,12 +176,8 @@ class MainWindow(tk.Tk):
         self.CreateNumericalSection()
 
         # Pack the button first to reserve space below the table.
-        self.save_button = ttk.Button(
-            self.result_frame,
-            text="Save Results",
-            command=self.OnSaveResults,
-            state="disabled"
-        )
+        self.save_button = ttk.Button(self.result_frame, text = "Save Results",
+                                command = self.OnSaveResults, state = "disabled")
         self.save_button.pack(side="bottom", pady=5)
 
         self.CreateConfigSection(self.result_frame)
@@ -1690,15 +1686,13 @@ class MainWindow(tk.Tk):
 
         self.numerical_entries = {}
 
-        parameters = [
-            "mass",
-            "hbar",
-            "x_min",
-            "x_max",
-            "N",
-            "dt",
-            "T_final"
-        ]
+        parameters = ["mass",
+                    "hbar",
+                    "x_min",
+                    "x_max",
+                    "N",
+                    "dt",
+                    "T_final"]
 
         for name in parameters:
 
@@ -1764,8 +1758,11 @@ class MainWindow(tk.Tk):
             self.after(50, self.FinishSimulation, future)
             return
         try:
-            res, x, times, densities, potential_values = future.result()
-            self.wave_animation.LoadData(x, times, densities, potential_values)
+            (res, x, times, densities, potential_values, 
+             momentum_grid, momentum_densities) = future.result()
+
+            self.wave_animation.LoadData(x, times, densities, 
+                                         potential_values, momentum_grid, momentum_densities,)
             self.result_table.LoadDataFrame(res)
 
             self.current_results = res
