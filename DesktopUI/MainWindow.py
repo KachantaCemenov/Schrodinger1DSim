@@ -1764,8 +1764,8 @@ class MainWindow(tk.Tk):
             self.after(50, self.FinishSimulation, future)
             return
         try:
-            res, x, times, densities = future.result()
-            self.wave_animation.LoadData(x, times, densities)
+            res, x, times, densities, potential_values = future.result()
+            self.wave_animation.LoadData(x, times, densities, potential_values)
             self.result_table.LoadDataFrame(res)
 
             self.current_results = res

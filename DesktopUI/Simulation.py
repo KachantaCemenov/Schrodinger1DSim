@@ -236,4 +236,6 @@ def RunSimulation(config):
             solver.Step(wave) #propagate the wave function to the next time step
 
     res = pd.DataFrame(rows, columns = ["Time", "Norm", "<x>", "<p>", "<E>"])
-    return res, display_grid.x, np.array(frame_steps) * config.dt, np.array(densities)
+    display_potential = full_potential.values if is_well else potential.values
+
+    return res, display_grid.x, np.array(frame_steps) * config.dt, np.array(densities), display_potential.copy()
