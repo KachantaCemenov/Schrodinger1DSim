@@ -46,6 +46,7 @@ class MainWindow(tk.Tk):
 
         self.geometry("1100x950")
         self.current_results = None
+        self.simulation_future = None
         self.help_window = None
 
         self.CreateTopBar()
@@ -1754,13 +1755,34 @@ class MainWindow(tk.Tk):
         self.run_button.configure(state="disabled", text="Running...")
 
         #Run in a thread to not freezing the GUI 
+        #And track future as self variable
+        """
         worker = ThreadPoolExecutor(max_workers=1)
         future = worker.submit(RunSimulation, config)
         worker.shutdown(wait=False)
 
+
         self.after(50, self.FinishSimulation, future)
+        """
+        worker = None
+        try: 
+            worker = ThreadPoolExecutor(max_workers = 1)
+            self.simulation_future = worker.submit(RunSimulation, config)
+        except Exception as e:
+            self.simulation_future = None
+            self.run_button.configure(state = "normal", text = "Run simulation")
+            messagebox.showerror("Cannot start simulation", str(e), parent = self)
+            return
+        finally:
+            if worker is not None: 
+                worker.shutdown(wait = False)
+        self.after(50, self.FinishSimulation, self.simulation_future)
+
+
 
     def FinishSimulation(self, future):
+        if future is not self.simulation_future: #passed wrong parameter
+            return
         if not future.done():
             self.after(50, self.FinishSimulation, future)
             return
@@ -1783,6 +1805,7 @@ class MainWindow(tk.Tk):
             messagebox.showerror("Simulation Error", str(error))
 
         finally:
+            self.simulation_future = None
             self.run_button.configure(state="normal", text="Run Simulation")
 
     #The save button ------------------------------------
@@ -1874,8 +1897,12 @@ class MainWindow(tk.Tk):
 
 
 
-    #Method for handling closing window
+    #Method for handling closing window (mostly for preventing closing)
     def OnClose(self):
+        #if simulation is running
+        if self.simulation_future is not None:
+            messagebox.showinfo("Simulation busy", "A simulation is running or its results are being loaded.\n\nPlease wait until it finishes before closing the application.", parent = self)
+
         if self.recommendation_view.IsLoading():
             messagebox.showinfo("Benchmark analysis running", "Please wait until the benchmark summary has finished loading.", parent = self)
             return
