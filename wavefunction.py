@@ -37,7 +37,13 @@ class WaveFunction:
     def Expectation_x(self):
         # <x> = integral of x * |psi(x)|^2 dx
         # Can't use norm method here cus x is array
-        return np.sum(self.grid.x * self.ProbabilityDensity() * (self.grid.dx))
+        weights = self.ProbabilityDensity()
+        total_weight = np.sum(weights)
+
+        if not np.isfinite(total_weight) or total_weight <= 0:
+            raise ValueError("Cannot calculate position for a zero or nonfinite wave.")
+
+        return float(np.sum(self.grid.x * weights) / total_weight) #normalized
 
     def Copy(self):
         # Return a copy 
@@ -67,38 +73,57 @@ class WaveFunction:
         phi_k = np.fft.fftshift(phi_k)
 
         return k, phi_k
-    
+
+    """Trapezoid was halving the endpoints
     def Expectation_p(self, hbar=1.0):
 
         k, phi_k = self.Momentum_WaveFunction()
 
         prob_k = np.abs(phi_k)**2
 
-        expec_k = np.trapezoid(k * prob_k, k)
+        expec_k = np.trapezoid(k * prob_k, k) 
 
         return hbar * expec_k
+    """
+
+    def Expectation_p(self, hbar=1.0):
+        k, phi_k = self.Momentum_WaveFunction()
+        weights = np.abs(phi_k) ** 2
+
+        total_weight = np.sum(weights)
+        if not np.isfinite(total_weight) or total_weight <= 0:
+            raise ValueError(
+                "Cannot calculate momentum for a zero or nonfinite wave."
+            )
+
+        return float(hbar * np.sum(k * weights) / total_weight)
 
 
     def Expectation_energy(self, potential, mass=1.0, hbar=1.0):
 
-        # T
+        if not np.isfinite(mass) or mass <= 0:
+            raise ValueError("Mass must be finite and positive.")
+        #T
         k, phi_k = self.Momentum_WaveFunction()
-
-        prob_k = np.abs(phi_k)**2
-
-        norm_k = np.trapezoid(prob_k, k)
-
-        kinetic = np.trapezoid((hbar**2 * k**2 / (2 * mass)) * prob_k, k) / norm_k
-
+        momentum_weights = np.abs(phi_k) ** 2
+        momentum_total = np.sum(momentum_weights)
 
         # V
-        x = self.grid.x
-        prob_x = self.ProbabilityDensity()
+        position_weights = self.ProbabilityDensity()
+        position_total = np.sum(position_weights)
 
-        norm_x = np.trapezoid(prob_x, x)
+        if not np.isfinite(momentum_total) or momentum_total <= 0 or not np.isfinite(position_total) or position_total <= 0:
+            raise ValueError("Cannot calculate energy for a zero or nonfinite wave.")
 
-        potential_energy = np.trapezoid(potential.values * prob_x, x) / norm_x
+        potential_values = np.asarray(potential.values, dtype=float)
+        if potential_values.shape != self.psi.shape:
+            raise ValueError("Potential and wave dimensions do not match.")
+        if not np.all(np.isfinite(potential_values)):
+            raise ValueError("This energy calculation requires a finite potential.")
 
+        kinetic = np.sum((hbar**2 * k**2 / (2 * mass)) * momentum_weights) / momentum_total
+
+        potential_energy = np.sum(potential_values * position_weights) / position_total
 
         return (kinetic + potential_energy).real
 
