@@ -1800,7 +1800,7 @@ class MainWindow(tk.Tk):
             return
         #The close dialog DOES NOT pause the calculation, it just prevent the results from being loaded
         if self.quit_prompt_open or not future.done():  
-            self.after(50, self.FinishSimulation, future)
+            self.after(50, self.FinishSimulation, future) #50ms
             return
 
         try:

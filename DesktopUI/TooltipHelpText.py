@@ -38,14 +38,26 @@ WAVE_HELP = {
                 "Its probability density therefore has standard deviation sigma before finite-domain and grid effects.\n\n"
                 "Smaller sigma gives a narrower packet and a broader "
                 "momentum distribution. Resolve the width with multiple grid points."),
-        "k0": "TODO: Explain the initial wave number and units.",
+        "k0": ("Initial central wave number of the Gaussian packet.\n\n"
+                "SI unit: inverse metre (1/m).\nIts ideal central momentum is p0 = hbar*k0.\n\n"
+                "Positive k0 gives positive central momentum; negative k0 gives negative central momentum.\n"
+                "k0 = 0 gives zero central momentum."),
     },
     "Plane Wave": {
-        "n": "TODO: Explain the plane-wave mode number and allowed values.",
+        "n": ("Integer mode number of the plane wave. Positive, negative, and zero values are allowed.\n\n"
+                "For domain length L = x_max - x_min:\nk = 2*pi*n/L and p = hbar*k.\n\n"
+                "The sign determines the momentum direction. n = 0 gives a spatially constant wave.\n"
+                "Use abs(n) well below N/2 to avoid grid aliasing."),
     },
     "Harmonic Oscillator Eigenstate": {
-        "n": "TODO: Explain the energy-state index and allowed values.",
-        "omega": "TODO: Explain the wave state's angular frequency and units.",
+        "n": ("Energy-state index. A unitless integer greater than or equal to zero.\n\n"
+                "n = 0 is the ground state; n = 1 is the first excited state.\n"
+                "For the matching harmonic potential, E_n = hbar*omega*(n + 1/2).\n\n"
+                "Higher states extend farther in position and require a sufficiently large, well-resolved domain."),
+        "omega": ("Angular frequency used to construct the initial harmonic-oscillator eigenstate. Must be positive.\n\n"
+                "SI unit: radians per second (rad/s).\nomega = 2*pi*f, where f is frequency in hertz.\n\n"
+                "Match this value to the potential's omega to prepare an eigenstate of that potential.\n" 
+                "Different values generally produce a changing probability distribution."),
     },
 }
 
@@ -53,7 +65,9 @@ WAVE_HELP = {
 POTENTIAL_HELP = {
     "Free Particle": {},
     "Harmonic Oscillator": {
-        "omega": "TODO: Explain the potential's angular frequency and units.",
+        "omega": ("Angular frequency of the harmonic potential V(x) = mass*omega**2*x**2 / 2, centered at x = 0.\n\n"
+                "Use a positive value. SI unit: radians per second (rad/s).\nomega = 2*pi*f, where f is frequency in hertz.\n\n"
+                "A larger omega gives a more strongly confining potential.")
     },
     "Barrier": {
         "height": "TODO: Explain barrier height and energy units.",
