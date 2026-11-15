@@ -2,6 +2,10 @@ from dataclasses import dataclass
 from grid import Grid1D
 import numpy as np
 import pandas as pd
+from concurrent.futures import CancelledError
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+import os
 
 from potential import Potential
 from wavefunction import WaveFunction
@@ -107,7 +111,13 @@ INFINITE_WELL_SSF_MESSAGE = (
     #In future put a new line here pointing to a section in the Help page
 )
 
-def RunSimulation(config):
+def CheckSimulationCancelled(stop_event): #Just check if it should be stopped
+    if stop_event is not None and stop_event.is_set():
+        raise CancelledError("Simulation cancelled.")
+
+
+def RunSimulation(config, stop_event = None):
+    CheckSimulationCancelled(stop_event) 
     #Displayed values
     values = [
             config.x_min, config.x_max, config.mass, config.hbar, 
@@ -214,6 +224,7 @@ def RunSimulation(config):
     momentum_spacing = (2 * np.pi * config.hbar / (display_count * display_dx))
 
     for step in range(num_steps + 1):
+        CheckSimulationCancelled(stop_event) 
         time = step * config.dt
 
         """rows.append((
@@ -255,9 +266,39 @@ def RunSimulation(config):
         if step < num_steps:
             solver.Step(wave) #propagate the wave function to the next time step
 
+    CheckSimulationCancelled(stop_event) 
     res = pd.DataFrame(rows, columns = ["Time", "Norm", "<x>", "<p>", "<E>"])
     display_potential = full_potential.values if is_well else potential.values
 
     return (res, display_grid.x, np.array(frame_steps) * config.dt, 
             np.array(densities), display_potential.copy(), 
             momentum_grid, np.array(momentum_densities))
+
+
+
+def SaveSimulationResults(dataframe, filename, stop_event): #Have this operation here so it can be stopped
+    destination = Path(filename)
+    temporary_path = None
+    try:
+        CheckSimulationCancelled(stop_event)
+
+        with NamedTemporaryFile(mode = "w", encoding = "utf-8", newline = "", dir = destination.parent,
+            prefix = ".simulation_", suffix = ".tmp", delete = False) as stream:
+            temporary_path = Path(stream.name)
+            # write headers 
+            dataframe.iloc[:0].to_csv(stream, index=False)
+            #then the rows
+            for start in range(0, len(dataframe), 5000):
+                CheckSimulationCancelled(stop_event)
+
+                dataframe.iloc[start:start + 5000].to_csv(stream,index = False, header = False)
+
+        CheckSimulationCancelled(stop_event)
+
+        # Replace to destination only after the entire CSV is written
+        os.replace(temporary_path, destination)
+        temporary_path = None
+
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok = True)

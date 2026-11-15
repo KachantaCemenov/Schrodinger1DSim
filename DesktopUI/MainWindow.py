@@ -7,11 +7,11 @@ from queue import Queue, Empty
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from threading import Event
-
+from concurrent.futures import ThreadPoolExecutor, CancelledError
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
-from Simulation import SimulationConfig, INFINITE_WELL_SSF_MESSAGE
+from Simulation import SimulationConfig, INFINITE_WELL_SSF_MESSAGE, SaveSimulationResults
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
@@ -1902,6 +1902,7 @@ class MainWindow(tk.Tk):
         #if simulation is running
         if self.simulation_future is not None:
             messagebox.showinfo("Simulation busy", "A simulation is running or its results are being loaded.\n\nPlease wait until it finishes before closing the application.", parent = self)
+            return
 
         if self.recommendation_view.IsLoading():
             messagebox.showinfo("Benchmark analysis running", "Please wait until the benchmark summary has finished loading.", parent = self)
