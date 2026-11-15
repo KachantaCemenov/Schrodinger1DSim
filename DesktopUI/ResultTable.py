@@ -23,7 +23,7 @@ class ResultTable(ttk.Frame):
         table_frame.rowconfigure(0, weight=1)
         table_frame.columnconfigure(0, weight=1)
 
-        self.tree = ttk.Treeview(self, show = "headings")
+        self.tree = ttk.Treeview(table_frame, show = "headings")
         self.tree.grid(row=0, column=0, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(table_frame, orient = "vertical", command = self.tree.yview)
@@ -60,7 +60,7 @@ class ResultTable(ttk.Frame):
 
         self.RefreshPage() #Move the reset pages in there
 
-    def RefreshPage():
+    def RefreshPage(self):
         children = self.tree.get_children()
         if children:
             self.tree.delete(*children)

@@ -197,7 +197,7 @@ class MainWindow(tk.Tk):
 
         self.CreateConfigSection(self.result_frame)
 
-        self.result_table = ResultTable(self.result_frame)
+        self.result_table = ResultTable(self.result_frame, page_size = 500) #Change page_size to determine how many rows displayed at once
         self.result_table.pack(fill="both", expand=True)
 
         self.wave_animation = WaveAnimation(animation_frame)
