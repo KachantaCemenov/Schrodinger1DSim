@@ -49,6 +49,13 @@ class MainWindow(tk.Tk):
         self.simulation_future = None
         self.help_window = None
 
+        #These are for stopping a simulation
+        self.simulation_stop_event = None
+        self.simulation_save_future = None
+        self.simulation_save_stop_event = None
+        self.close_requested = False
+        self.quit_prompt_open = False
+
         self.CreateTopBar()
         self.CreateTabs()
 
@@ -1740,6 +1747,10 @@ class MainWindow(tk.Tk):
 
     #Methods for the run button ----------------------------------
     def OnRunSimulation(self):
+        #If it should be stopped, don't run
+        if self.close_requested or self.quit_prompt_open or self.simulation_future is not None or self.simulation_save_future is not None:
+            return
+
         try:
             config = self.BuildSimulationConfig()
 
@@ -1765,11 +1776,13 @@ class MainWindow(tk.Tk):
         self.after(50, self.FinishSimulation, future)
         """
         worker = None
+        self.simulation_stop_event = Event()
         try: 
             worker = ThreadPoolExecutor(max_workers = 1)
-            self.simulation_future = worker.submit(RunSimulation, config)
+            self.simulation_future = worker.submit(RunSimulation, config, self.simulation_stop_event) 
         except Exception as e:
             self.simulation_future = None
+            self.simulation_stop_event = None
             self.run_button.configure(state = "normal", text = "Run simulation")
             messagebox.showerror("Cannot start simulation", str(e), parent = self)
             return
@@ -1783,9 +1796,13 @@ class MainWindow(tk.Tk):
     def FinishSimulation(self, future):
         if future is not self.simulation_future: #passed wrong parameter
             return
-        if not future.done():
+        if self.close_requested:
+            return
+        #The close dialog DOES NOT pause the calculation, it just prevent the results from being loaded
+        if self.quit_prompt_open or not future.done():  
             self.after(50, self.FinishSimulation, future)
             return
+
         try:
             (res, x, times, densities, potential_values, 
              momentum_grid, momentum_densities) = future.result()
@@ -1796,7 +1813,8 @@ class MainWindow(tk.Tk):
 
             self.current_results = res
             self.save_button.configure(state="normal")
-        
+        except CancelledError:  #If receiver canceled event, just ignore it here
+            pass
         #Catch ValueError from Simulation so it doesn't crash
         except ValueError as error:
             messagebox.showerror("Invalid input", str(error), parent=self)
@@ -1806,22 +1824,66 @@ class MainWindow(tk.Tk):
 
         finally:
             self.simulation_future = None
+            self.simulation_stop_event = None
             self.run_button.configure(state="normal", text="Run Simulation")
 
     #The save button ------------------------------------
     def OnSaveResults(self):
 
-        if self.current_results is None:
+        if (self.current_results is None or self.simulation_future is not None or self.simulation_save_future is not None
+                or self.close_requested or self.quit_prompt_open):
             return
 
-        path = filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV files", "*.csv")])
+
+        path = filedialog.asksaveasfilename(defaultextension = ".csv",filetypes = [("CSV files", "*.csv")], parent = self)
 
         if not path:
             return
+
+        self.simulation_save_stop_event = Event()
+        self.save_button.configure(state = "disabled", text = "Saving...")
+        self.run_button.configure(state = "disabled")
+
+        worker = None
+
+        try: #Make saving operation a worker, use the save method in Simulation.py
+            worker = ThreadPoolExecutor(max_workers = 1)
+            self.simulation_save_future = worker.submit(SaveSimulationResults, self.current_results, path, self.simulation_save_stop_event)
+        except Exception as e:
+            self.simulation_save_future = None
+            self.simulation_save_stop_event = None
+            self.save_button.configure(state = "normal", text = "Save Results")
+            self.run_button.configure(state = "normal")
+
+            messagebox.showerror("Cannot start saving", str(e),parent = self)
+            return
+        finally:
+            if worker is not None:
+                worker.shutdown(wait = False)
+        self.after(50, self.PollSimulationSave)
+
+    def PollSimulationSave(self): #And a poll function to handle stopping that saving simulation thread
+        if self.close_requested:
+            return #don't do anything
+        future = self.simulation_save_future
+        if future is None:
+            return
+
+        if self.quit_prompt_open or not future.done():
+            self.after(50, self.PollSimulationSave)
+            return
+
         try:
-            self.current_results.to_csv(path,index=False)
-        except OSError as e:
+            future.result()
+        except CancelledError:
+            pass
+        except Exception as e:
             messagebox.showerror("Cannot save simulation results", str(e), parent = self)
+        finally:
+            self.simulation_save_future = None
+            self.simulation_save_stop_event = None
+            self.save_button.configure(state = "normal", text = "Save Results")
+            self.run_button.configure(state = "normal")
 
     #For detecting empty and wrong entries then convert
     def ReadEntry(self, entry, name, expected_type):
@@ -1892,16 +1954,60 @@ class MainWindow(tk.Tk):
                                 wave_expression=(
                                     self.wave_expression_entry.get()
                                     if self.wave_input_mode.get() == "Expression"
-                                    else None)
-                                )
+                                    else None))
 
+    #Custom dialog to ask close confirmation when user click close window during a simulation
+    def ConfirmSimulationQuit(self):
+        self.quit_prompt_open = True
+        confirmed = False
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Quit application?")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+
+        def Finish(answer):
+            nonlocal confirmed
+            confirmed = answer
+            dialog.destroy()
+        body = ttk.Frame(dialog, padding=20)
+        body.pack(fill="both", expand=True)
+
+        ttk.Label(body, text = ("A simulation is underway, its results are being loaded, or its results are being saved.\n\n"
+                "Are you sure you want to quit?\n\nQuitting will stop the operation. Unsaved simulation data "
+                "will be lost and cannot be recovered.\n\nFiles whose saves have already completed will remain."),
+                wraplength = 460, justify = "left").pack(fill = "x")
+        buttons = ttk.Frame(body)
+        buttons.pack(anchor = "e", pady = (16, 0))
+
+        ttk.Button(buttons, text = "Yes, quit", command = lambda: Finish(True)).pack(side = "left", padx = (0, 8))
+
+        no_button = ttk.Button(buttons, text = "No", command = lambda: Finish(False))
+        no_button.pack(side = "left")
+
+        dialog.protocol("WM_DELETE_WINDOW", lambda: Finish(False))
+        dialog.bind("<Escape>", lambda event: Finish(False))
+
+        try:
+            dialog.wait_visibility()
+            dialog.grab_set()
+            no_button.focus_set()
+            self.wait_window(dialog)
+        finally:
+            self.quit_prompt_open = False
+
+        return confirmed
 
 
     #Method for handling closing window (mostly for preventing closing)
     def OnClose(self):
         #if simulation is running
+        """ Unneeded, ConfirmSimulationQuit handles this case
         if self.simulation_future is not None:
             messagebox.showinfo("Simulation busy", "A simulation is running or its results are being loaded.\n\nPlease wait until it finishes before closing the application.", parent = self)
+            return
+        """
+        if self.close_requested or self.quit_prompt_open:
             return
 
         if self.recommendation_view.IsLoading():
@@ -1915,6 +2021,10 @@ class MainWindow(tk.Tk):
             messagebox.showinfo("Benchmark busy",
             "A benchmark is still running or its results are being saved.\n\n"
             "Please wait until it finishes or stop it before closing the application.", parent = self)
+            return
+
+        simulation_pending = self.simulation_future is not None or self.simulation_save_future is not None
+        if simulation_pending and not self.ConfirmSimulationQuit(): #turn on the close ask dialog here
             return
 
         if self.benchmark_temp_directory is not None:
@@ -1933,4 +2043,28 @@ class MainWindow(tk.Tk):
                 return
 
             self.benchmark_temp_directory = None
+
+        self.close_requested = True
+
+        if self.simulation_stop_event is not None:
+            self.simulation_stop_event.set()
+
+        if self.simulation_save_stop_event is not None:
+            self.simulation_save_stop_event.set()
+
+        self.run_button.configure(state = "disabled", text = "Stopping...")
+        self.save_button.configure(state = "disabled")
+        self.wave_animation.Pause()
+        self.title("Stopping Simulation — closing application…")
+
+        self.WaitForSimulationShutdown()
+
+
+    def WaitForSimulationShutdown(self):
+        futures = (self.simulation_future, self.simulation_save_future)
+
+        if any(future is not None and not future.done() for future in futures):
+            self.after(50, self.WaitForSimulationShutdown)
+            return
+
         self.destroy()

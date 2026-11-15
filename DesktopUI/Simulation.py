@@ -197,7 +197,7 @@ def RunSimulation(config, stop_event = None):
         if not np.isfinite(norm) or norm <= 0:
             raise ValueError("Wave function must be nonzero inside well")
         wave.Normalize() #Normalize ONCE
-
+    CheckSimulationCancelled(stop_event)
     solver_args = dict(dt = config.dt, hbar = config.hbar, mass = config.mass)
 
     if config.solver == "Crank-Nicolson":
