@@ -26,13 +26,17 @@ class WaveAnimation(ttk.Frame):
         controls = ttk.Frame(self)
         controls.pack(fill="x")
 
-        self.play_button = ttk.Button(
-            controls,
-            text="Play",
-            command=self.TogglePlayback,
-            state="disabled"
-        )
-        self.play_button.pack(side="left", padx=5, pady=3)
+        self.play_button = ttk.Button(controls, text = "Play", command = self.TogglePlayback,state = "disabled")
+        self.play_button.pack(side = "left", padx = 5, pady = 3)
+
+        #Buttons for momentum graphs
+        self.momentum_full_button = ttk.Button(controls, text = "Full momentum range", command = lambda: self.SetMomentumView(False),
+            state = "disabled")
+        self.momentum_full_button.pack(side = "right", padx = 5, pady = 3)
+
+        self.momentum_fit_button = ttk.Button(controls, text = "Fit momentum distribution", command = lambda: self.SetMomentumView(True),
+            state = "disabled")
+        self.momentum_fit_button.pack(side = "right", padx = 5, pady = 3)
 
         self.time_text = tk.StringVar(value="No simulation loaded")
         ttk.Label(controls,textvariable=self.time_text).pack(side="left", padx=10)
@@ -151,13 +155,16 @@ class WaveAnimation(ttk.Frame):
         # Fixed limits prevent the vertical scale jumping during playback.
         peak = float(densities.max())
         self.axes.set_ylim(0, peak * 1.1 if peak > 0 else 1)
-        self.momentum_axes.set_xlim(self.momentum_grid[0], self.momentum_grid[-1])
+        self.momentum_fit_limits = self.CalculateMomentumLimits() 
+        self.momentum_axes.set_xlim(*self.momentum_fit_limits)
         momentum_peak = float(self.momentum_densities.max())
         self.momentum_axes.set_ylim(0, momentum_peak * 1.1 if momentum_peak > 0 else 1)
         self.UpdatePotential(x, potential_values)
         self.figure.tight_layout()
         self.background = None
 
+        self.momentum_fit_button.configure(state="normal")
+        self.momentum_full_button.configure(state="normal")
         self.play_button.configure(state="normal")
         self.ShowFrame(0)
         self.Play()
@@ -295,3 +302,54 @@ class WaveAnimation(ttk.Frame):
 
             note = self.potential_axes.text(0.02, 0.95, "Shaded regions: V = ∞", transform = self.potential_axes.transAxes, va = "top", color = "tab:orange")
             self.wall_artists.append(note)
+
+    def CalculateMomentumLimits(self): #Exclude spaces with too small momentum probability densities
+        p = self.momentum_grid
+        first = len(p) - 1
+        last = 0
+        found = False
+
+        # Exclude at most 0.05% from each tail of each frame.
+        tail = 0.0005
+
+        for density in self.momentum_densities:
+            peak = float(density.max())
+            if peak <= 0:
+                continue
+
+            # Scaling avoids unnecessarily large cumulative sums.
+            # The FFT grid is uniformly spaced, so dp cancels when calculating probability fractions.
+            cumulative = np.cumsum(density / peak)
+            total = cumulative[-1]
+
+            low = int(np.searchsorted(cumulative, tail * total))
+            high = int(np.searchsorted(cumulative, (1 - tail) * total))
+
+            first = min(first, low)
+            last = max(last, min(high, len(p) - 1))
+            found = True
+
+        if not found:
+            return float(p[0]), float(p[-1])
+
+        # Add padding, including when all probability occupies one bin.
+        spacing = float(p[1] - p[0])
+        padding = max(0.1 * float(p[last] - p[first]), 3 * spacing)
+
+        return (max(float(p[0]), float(p[first]) - padding), min(float(p[-1]), float(p[last]) + padding))
+
+
+    def SetMomentumView(self, fit):
+        if self.momentum_grid is None:
+            return
+
+        if fit:
+            limits = self.momentum_fit_limits
+        else:
+            limits = (float(self.momentum_grid[0]), float(self.momentum_grid[-1]))
+
+        self.momentum_axes.set_xlim(*limits)
+
+        # Changing axes invalidates the saved blitting background.
+        self.background = None
+        self.canvas.draw_idle()
