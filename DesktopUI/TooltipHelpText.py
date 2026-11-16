@@ -70,13 +70,28 @@ POTENTIAL_HELP = {
                 "A larger omega gives a more strongly confining potential.")
     },
     "Barrier": {
-        "height": "TODO: Explain barrier height and energy units.",
-        "x_left": "TODO: Explain the barrier's left edge and units.",
-        "x_right": "TODO: Explain the barrier's right edge and units.",
+        "height": ("Potential energy within the wall region; the potential is zero outside it.\n\n"
+                    "SI unit: joule (J).\n"
+                    "Note: 1 electronvolt = 1.602176634e-19 J.\n\n"
+                    "A positive height creates a barrier. A negative height creates a finite potential well."),
+        "x_left": ("Left edge of the rectangular potential region.\n\n"
+                    "SI unit: metre (m). Must be less than x_right.\n"
+                    "Place the region inside the computational domain and use enough grid points to resolve its width."),
+        "x_right": ("Right edge of the rectangular potential region.\n\n"
+                    "SI unit: metre (m). Must be greater than x_left.\n"
+                    "The region's width is x_right - x_left."),
     },
     "Infinite Square Well": {
-        "x_left": "TODO: Explain the well's left wall and units.",
-        "x_right": "TODO: Explain the well's right wall and units.",
+        "x_left": ("Left wall of the infinite square well.\n\n"
+            "SI unit: metre (m).\nRequired: x_min < x_left < x_right < x_max.\n"
+            "Both walls must align with grid points.\n\n"
+            "The wave is zero at the walls and outside the well.\n"
+            "SSF and the two-solver benchmark do not currently support this potential."
+        ),
+        "x_right": ("Right wall of the infinite square well.\n\n"
+                    "SI unit: metre (m).\nRequired: x_min < x_left < x_right < x_max.\n"
+                    "Both walls must align with grid points.\n\n"
+                    "The well width is x_right - x_left.\nSSF and the two-solver benchmark do not currently support this potential."),
     },
 }
 
