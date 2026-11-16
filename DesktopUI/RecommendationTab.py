@@ -10,6 +10,8 @@ import zipfile
 from tempfile import TemporaryDirectory
 
 from Recommendation import BuildRecommendationSummary, FindRecommendation
+from Tooltips import AddToolTip
+from TooltipHelpText import RECOMMENDATION_HELP
 
 #Make Recommendation tab here so MainWindow doesn't blow up more than it already is
 
@@ -105,6 +107,7 @@ class RecommendationTab(ttk.Frame):
         panes.add(table_frame, weight = 3)
 
         self.CreateRequirements()
+        self.AttachTooltips()
 
     def IsLoading(self):
         # Includes a finished worker whose result hasn't been processed yet.
@@ -523,3 +526,21 @@ class RecommendationTab(ttk.Frame):
         self.candidate_filter.set("All candidates")
         self.ShowSummary()
         self.RefreshReportControls()
+
+    def AttachTooltips(self): #Add tooltips 
+        controls = ((self.open_button, "open_run"),
+                    (self.use_loaded_button, "use_loaded"),
+                    (self.folder_button, "open_folder"),
+                    (self.find_button, "find"),
+                    (self.reset_button, "reset"),
+                    (self.candidate_filter_box, "candidate_filter"))
+
+        for widget, key in controls:
+            AddToolTip(widget, RECOMMENDATION_HELP[key])
+
+        for key, widget in self.selection_boxes.items():
+            AddToolTip(widget, RECOMMENDATION_HELP[key])
+
+        for key in self.tolerance_entries:
+            AddToolTip(self.tolerance_checks[key], RECOMMENDATION_HELP[key])
+            AddToolTip(self.tolerance_entries[key], RECOMMENDATION_HELP[key])

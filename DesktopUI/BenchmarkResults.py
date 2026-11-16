@@ -4,11 +4,13 @@ from pathlib import Path
 import json
 import math
 from itertools import product
-from ResultTable import ResultTable
-
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+from ResultTable import ResultTable
+from Tooltips import AddToolTip
+from TooltipHelpText import READ_BENCHMARK_HELP
 
 def ReadBenchmarkManifest(folder, *, allow_running = False):
     folder = Path(folder).resolve()
@@ -132,6 +134,7 @@ class BenchmarkResults(ttk.Frame):
 
             self.variables[label] = variable
             self.dropdowns[label] = dropdown
+            AddToolTip(dropdown, READ_BENCHMARK_HELP[label]) #Add tooltip
 
         """self.figure = Figure(figsize=(8, 3), dpi=100)
         self.axes = self.figure.add_subplot(111)
@@ -169,6 +172,9 @@ class BenchmarkResults(ttk.Frame):
 
         self.result_table = ResultTable(table_frame)
         self.result_table.pack(fill = "both", expand = True)
+
+        AddToolTip(self.previous_page_button, READ_BENCHMARK_HELP["previous"])
+        AddToolTip(self.next_page_button, READ_BENCHMARK_HELP["next"])
 
     def RefreshTable(self):
         if self.data is None:

@@ -24,7 +24,8 @@ from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock,
                         ListRecoveryFolders, IsRecoveryFolder, DeleteRecoveryFolder)
 from RecommendationTab import RecommendationTab
 from Tooltips import AddToolTip
-from TooltipHelpText import NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, BENCHMARK_HELP
+from TooltipHelpText import (NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, 
+                             BENCHMARK_HELP, READ_BENCHMARK_HELP)
 from HelpWindow import HelpWindow
 from ScrollableFrame import ScrollableFrame
 
@@ -207,20 +208,26 @@ class MainWindow(tk.Tk):
         toolbar = ttk.Frame(self.read_benchmark_tab, padding=8)
         toolbar.pack(fill="x")
 
-        ttk.Button(toolbar, text = "Open run folder", command = self.OnOpenBenchmarkRun).pack(side="left", padx=(0, 8))
+        #Whenver need button as reference, do not pack it on same line as creation and assign to variable, cus pack return None
+        open_run_button = ttk.Button(toolbar, text = "Open run folder", command = self.OnOpenBenchmarkRun)
+        open_run_button.pack(side="left", padx=(0, 8))
+        AddToolTip(open_run_button, READ_BENCHMARK_HELP["open_run"])
 
-        self.read_benchmark_folder_button = ttk.Button(toolbar, text="Open results folder",
-                                                        command=self.OpenBenchmarkResultsFolder,
-                                                        state="disabled")
+        self.read_benchmark_folder_button = ttk.Button(toolbar, text = "Open results folder", command = self.OpenBenchmarkResultsFolder, state = "disabled")
         self.read_benchmark_folder_button.pack(side = "left")
 
         #Recover disrupted benchmark button
-        ttk.Button(toolbar, text = "Recover runs", command = self.ShowBenchmarkRecovery).pack(side = "left", padx = (8,0))
+        recover_button = ttk.Button(toolbar, text = "Recover runs", command = self.ShowBenchmarkRecovery)
+        recover_button.pack(side = "left", padx = (8,0))
+        AddToolTip(recover_button, READ_BENCHMARK_HELP["recover"])
 
         #resume benchmark button
         self.resume_benchmark_button = ttk.Button(toolbar, text="Resume loaded run", 
                                                   command=self.OnResumeBenchmarkRun, state="disabled")
         self.resume_benchmark_button.pack(side="left", padx=(8, 0))
+
+        AddToolTip(self.read_benchmark_folder_button, READ_BENCHMARK_HELP["open_folder"])
+        AddToolTip(self.resume_benchmark_button, READ_BENCHMARK_HELP["resume"])
 
         self.read_benchmark_path = tk.StringVar(value = "Open a saved run folder or save a new benchmark run.")
         ttk.Label(toolbar, textvariable = self.read_benchmark_path, wraplength = 650).pack(side = "left", padx = 12)
