@@ -97,31 +97,64 @@ POTENTIAL_HELP = {
 
 
 SIMULATION_HELP = {
-    "preset_mode": "TODO: Explain choosing a predefined wave function.",
-    "expression_mode": "TODO: Explain entering a custom wave function.",
-    "expression": (
-        "TODO: Explain the expression syntax.\n\n"
-        "TODO: List supported variables, functions, and an example."
-    ),
-    "wave_type": "TODO: Explain the available initial wave types.",
-    "potential_type": "TODO: Explain the available potential types.",
-    "solver": "TODO: Explain solver selection and compatibility restrictions.",
-    "configuration_name": "TODO: Explain naming and saving a configuration.",
-    "saved_configuration": (
-        "TODO: Explain selecting a saved configuration and opening its folder."
-    ),
+    "preset_mode": ("Construct the initial wave function using a predefined wave type and its parameter fields."),
+    "expression_mode": ("Enter a mathematical expression for the initial wave amplitude psi(x, 0), instead of choosing a preset."),
+    "expression": ("Enter the initial wave amplitude, not its probability density.\n\n"
+                    "Variable: x.\n"
+                    "Constants: pi, e, i, j. Both i and j represent sqrt(-1).\n"
+                    "Functions: sin, cos, tan, exp, sqrt, abs.\n"
+                    "Operators: +, -, *, /, ** and parentheses.\n\n"
+                    "Example:\n"
+                    "exp(-(x+2)**2/4)*exp(2*i*x)\n\n"
+                    "Use ** for powers and explicit * for multiplication. "
+                    "Do not use np. prefixes or undefined parameter names.\n"
+                    "Values must be finite and the wave must have nonzero norm. "
+                    "The initial wave is normalized automatically."),
+    "wave_type": ("Choose the initial wave: Gaussian Packet, Plane Wave, or Harmonic Oscillator Eigenstate.\n\n"
+                    "The fields below change to match the selected type. "
+                    "The initial wave and the evolution potential are selected separately.\n"
+                    "This section will be updated in the future as other wave types are implemented."),
+    "potential_type": ("Choose the potential energy governing wave evolution.\n\n"
+                        "Available types: Free Particle, Harmonic Oscillator, Barrier, and Infinite Square Well.\n"
+                        "Infinite Square Well currently requires Crank-Nicolson.\n"
+                        "This section will be updated in the future as other potential types are implemented."),
+    "solver": ("Choose the numerical time-evolution method:\n"
+                "Crank-Nicolson (CN) or Split-Step Fourier (SSF).\n\n"
+                "Accuracy and runtime depend on the problem, N, and dt.\n"
+                "Infinite Square Well currently supports CN only; the current SSF implementation uses periodic boundaries."),
+    "configuration_name": ("Name used when saving the current Simulation settings.\n\n"
+                            "A configuration stores inputs so they can be loaded again. It does not save calculated results; use Save Results for the simulation table."),
+    "saved_configuration": ("Select a saved Simulation configuration, then click Load to fill the fields correspondingly.\n\n"
+                            "Choose the folder-opening option to view the configuration storage location."),
 }
 
 
 BENCHMARK_HELP = {
-    "N_values": "TODO: Explain the comma-separated list of spatial grid sizes.",
-    "dt_values": "TODO: Explain the comma-separated list of time steps.",
-    "wave_type": "TODO: Explain choosing the current benchmark problem's wave.",
-    "potential_type": "TODO: Explain choosing the current problem's potential.",
-    "problem_name": "TODO: Explain naming a problem and updating an existing one.",
-    "problem_list": "TODO: Explain selecting, loading, and removing run problems.",
-    "configuration_name": "TODO: Explain naming a configuration for an entire run.",
-    "saved_configuration": (
-        "TODO: Explain loading a saved run configuration and opening its folder."
-    ),
+    "N_values": ("Comma-separated spatial grid sizes for the entire run.\n\n"
+                "Example: 500, 1000, 2000.\n"
+                "Enter distinct integers without a trailing comma.\n\n"
+                "Every problem is calculated for every N and dt combination using both solvers."),
+    "dt_values": ("Comma-separated time steps for the entire run.\n\n"
+                "SI unit: second (s).\n"
+                "Example: 1e-17, 5e-18, 1e-18.\n"
+                "Values must be distinct, finite, and positive.\n\n"
+                "Each problem's T_final / dt must be a positive whole number for every listed dt."),
+    "wave_type": ("Choose the initial wave type for the problem being edited.\n\n"
+                "Set its parameters, give the problem a name, then click Add / Update to include those settings in the run."),
+    "potential_type": ("Choose the potential for the problem being edited.\n\n"
+                    "If no analytical reference is implemented for this combination, the run can proceed after confirmation, but L2 reference errors will be N/A.\n\n"
+                    "Infinite Square Well is currently unavailable in Benchmark because the run compares both CN and SSF."
+                    "Set its parameters, give the problem a name, then click Add / Update to include those settings in the run."),
+    "problem_name": ("Name identifying a problem within this run.\n\n"
+                    "Click Add / Update to store the current problem settings. Using an existing name asks whether to replace that problem.\n"
+                    "Editing the form alone does not update a stored problem."),
+    "problem_list": ("Problems currently included in this run.\n\n"
+                    "Select an item and click Load selected into form to edit it, then click Add / Update to store the changes.\n"
+                    "Select remove will remove it from the current run.\n\n"
+                    "All listed problems use the run's shared N and dt lists."),
+    "configuration_name": ("Name used to save the entire benchmark setup: all included problems and the shared N and dt lists.\n\n"
+                        "Saving a configuration saves inputs, not calculated results."),
+    "saved_configuration": ("Select a saved benchmark configuration and click Load to restore its problems and sweep settings.\n\n"
+                        "Choose the folder-opening option to view the configuration storage location.\n"
+                        "To inspect calculated results, open a saved run in Read Benchmark."),
 }
