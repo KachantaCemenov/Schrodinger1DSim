@@ -158,3 +158,64 @@ BENCHMARK_HELP = {
                         "Choose the folder-opening option to view the configuration storage location.\n"
                         "To inspect calculated results, open a saved run in Read Benchmark."),
 }
+
+READ_BENCHMARK_HELP = {
+    "open_run": ("Load a saved benchmark run for inspection.\n"
+        "Select the run folder containing run.json.\n\n"
+        "Completed and stopped runs can be inspected. Only completed combinations have results."),
+    "open_folder": ("Open the loaded run's results folder in File Explorer."),
+    "recover": ("Find unfinished benchmark runs retained by the application.\n\n"
+        "You can inspect completed combinations, resume missing combinations, or delete recovery data."),
+    "resume": ("Continue the loaded partial run by calculating missing problem/N/dt combinations.\n\n"
+        "Completed combinations are reused. An interrupted combination is restarted rather than continued from its last time step."),
+    "Problem": ("Choose a problem with completed results in this run."),
+    "Quantity": ("Choose the quantity displayed in both the graph and table.\n\n"
+                "Norm is the wave-function norm, not norm error.\n"
+                "Position, momentum, and energy are expectation values.\n"
+                "L2 error compares the numerical wave with an analytical reference; it is unavailable when no reference was used.\n\n"
+                "Units follow the unit system used for the benchmark."),
+    "N": ("Choose a completed spatial-grid size for this problem.\n"
+        "N is the number of spatial grid points and has no unit."),
+    "dt": ("Choose a completed time-step size for the selected problem and N.\n\n"
+        "The unit is seconds when the benchmark uses SI units."),
+    "previous": ("Display the previous page of table rows.\n"
+        "Paging does not change the graph or saved results."),
+    "next": ("Display the next page of table rows.\n"
+        "Paging does not change the graph or saved results."),
+}
+
+
+RECOMMENDATION_HELP = {
+    "open_run": ("Load a saved benchmark run and summarize its completed results.\n\n"
+        "Recommendations use recorded results; no new simulations are performed."),
+    "use_loaded": ("Analyze the run currently loaded in Read Benchmark."),
+    "open_folder": ("Open the analyzed run's results folder in File Explorer."),
+    "Problem": ("Choose the benchmark problem to evaluate.\n\n"
+        "Recommendations compare tested solver/N/dt candidates for this problem."),
+    "N": ("Restrict candidates to a particular tested grid size, "
+        "or select Any tested value to consider all available sizes."),
+    "dt": ("Restrict candidates to a particular tested time step, or select Any tested value to consider all available steps."),
+    "l2": ("Enable this constraint to limit the maximum recorded L2 error over the simulation.\n\n"
+            "Enter a finite, nonnegative tolerance, such as 1e-3.\n"
+            "This compares the numerical wave with its analytical reference.\n"
+            "Unavailable when the selected candidates lack reference errors.\n\n"
+            "Unchecked constraints are ignored."),
+    "norm": ("Enable this constraint to limit the maximum absolute change in wave-function norm from its initial value.\n\n"
+            "Enter a finite, nonnegative tolerance, such as 1e-10.\n"
+            "This is an absolute, unitless drift, not a percentage.\n\n"
+            "Small norm drift alone does not guarantee an accurate wave.\n"
+            "Unchecked constraints are ignored."),
+    "energy": ("Enable this constraint to limit the maximum absolute change in expected energy from its initial value.\n\n"
+                "Enter a finite, nonnegative tolerance in the benchmark's "
+                "energy units: joules for SI calculations.\n"
+                "This is absolute drift, not a relative error or percentage.\n\n"
+                "Small energy drift alone does not guarantee an accurate wave.\n"
+                "Unchecked constraints are ignored."),
+    "find": ("Find the fastest recorded candidate satisfying all enabled constraints and the selected filters.\n\n"
+            "Also show the best qualifying candidate for each solver.\n"
+            "Results apply to the tested configurations and recorded runtimes; they do not predict untested configurations."),
+    "reset": ("Clear and disable tolerance constraints and restore N and dt to Any tested value.\n"
+        "Keep the currently selected problem."),
+    "candidate_filter": ("Show all evaluated candidates, only qualifying candidates, or only rejected candidates.\n\n"
+        "This changes the displayed table, not the recommendation criteria."),
+}
