@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor, CancelledError
+from scipy.constants import m_e, hbar 
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
@@ -25,7 +26,7 @@ from BenchmarkRecovery import (BenchmarkWorkingDirectory, AcquireRecoveryLock,
 from RecommendationTab import RecommendationTab
 from Tooltips import AddToolTip
 from TooltipHelpText import (NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATION_HELP, 
-                             BENCHMARK_HELP, READ_BENCHMARK_HELP)
+                             BENCHMARK_HELP, READ_BENCHMARK_HELP, CONSTANT_HELP)
 from HelpWindow import HelpWindow
 from ScrollableFrame import ScrollableFrame
 
@@ -296,6 +297,9 @@ class MainWindow(tk.Tk):
             entry.grid(row=row, column=1, sticky="ew", pady=2)
             self.benchmark_numerical_entries[name] = entry
             AddToolTip(entry, NUMERICAL_HELP[name])
+            if name in ("mass", "hbar"):
+                checkbox = self.CreateConstantCheckbox(numerical_frame, entry, name)
+                checkbox.grid(row = row, column = 2, sticky = "w", padx = (6, 0), pady = 2)
         
         #Make new self field for wave/ pot types cus self.wave_type depends on entry in simulation tab
         self.benchmark_wave_type, self.benchmark_wave_entries, self.RefreshBenchmarkWaveFields = ( 
@@ -1731,6 +1735,10 @@ class MainWindow(tk.Tk):
             self.numerical_entries[name] = entry
             AddToolTip(entry, NUMERICAL_HELP[name])
 
+            if name in ("mass", "hbar"): #Make constant checkboxes for mass and hbar
+                checkbox = self.CreateConstantCheckbox(row, entry, name)
+                checkbox.pack(side = "left", padx = (6, 0))
+
         #Solver choice
         solver_row = ttk.Frame(frame)
 
@@ -1963,6 +1971,42 @@ class MainWindow(tk.Tk):
                                     if self.wave_input_mode.get() == "Expression"
                                     else None))
 
+    #Checkboxes to fill in constants
+    def CreateConstantCheckbox(self, parent, entry, name):
+        presets = {"mass": ("Electron", m_e),
+                   "hbar": ("ħ", hbar)}
+        label, preset = presets[name]
+
+        text = tk.StringVar(master = self, value = entry.get())
+        selected = tk.BooleanVar(master = self, value = False)
+        entry.configure(textvariable = text)
+
+        def SyncCheckbox(*_):
+            try:
+                matches = float(text.get()) == preset
+            except (ValueError, OverflowError):
+                matches = False
+            selected.set(matches)
+
+        def ApplyPreset():
+            if selected.get():
+                text.set(repr(preset))
+            else:
+                text.set("")
+        checkbox = ttk.Checkbutton(parent, text = label, variable = selected, command = ApplyPreset)
+
+        text.trace_add("write", SyncCheckbox)
+        SyncCheckbox()
+
+        # Retain the Tkinter variables for the widget's lifetime.
+        entry.constant_text = text
+        checkbox.constant_selected = selected
+
+        AddToolTip(checkbox, CONSTANT_HELP[name])
+        return checkbox
+    
+    
+    
     #Custom dialog to ask close confirmation when user click close window during a simulation
     def ConfirmSimulationQuit(self):
         self.quit_prompt_open = True

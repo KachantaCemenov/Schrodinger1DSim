@@ -27,6 +27,18 @@ NUMERICAL_HELP = {
                 "For example, T_final = 1e-14 and dt = 1e-17 require 1000 steps."),
 }
 
+CONSTANT_HELP = {
+    "mass": ("Fill the electron mass: approximately 9.10938e-31 kg.\n\n"
+            "Uses scipy.constants.m_e.\n"
+            "Uncheck to clear the field, or type a different mass.\n\n"
+            "This value uses kilograms. Keep all other inputs in a consistent unit system."),
+    "hbar": ("Fill the SI reduced Planck constant: "
+            "approximately 1.054571817e-34 J*s.\n\n"
+            "Uses scipy.constants.hbar.\n"
+            "Uncheck to clear the field, or type a different value.\n\n"
+            "For SI calculations, use kilograms, metres, seconds, and joules throughout."),
+}
+
 
 WAVE_HELP = {
     "Gaussian Packet": {
