@@ -83,6 +83,7 @@
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 19, 2026_SSF.csv" />
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_September 22, 2026.csv" />
     <Content Include="DesktopUI\TooltipHelpText.py" />
+    <Content Include="requirements.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

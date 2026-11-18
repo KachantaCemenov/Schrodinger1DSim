@@ -3,13 +3,13 @@ HELP_TOPICS = [
         "Solvers",
         [
             ("Numerical Solvers\n", "title"),
-            ("A solver calculates the result of the wave function - which, in this program, is a 1D matrix of probability density in space - at the next step in time"
+            ("A solver calculates the result of the wave function - which, in this program, is a 1D array of probability amplitudes in space - at the next step in time"
                  "in the selected problem, potential, spacial grid, and time step."
                  "This application provides two methods at the time of this writing.\n\n", None),
             ("Crank–Nicolson (CN)\n", "heading"),
             ("Crank-Nicolson uses finite differences to represent spatial derivatives and solves an equation of tridiagonal matrices at each time step.\n\n", None),
             ( "• Supports the Infinite Square Well in Simulation, with the wave fixed to zero at the walls.\n", "bullet"),
-            ( "• Problems with large grid points and time steps produce significantly large errors.\n\n", "bullet"),
+            ( "• Problems with large spatial grid spacing and time steps produce significantly large errors.\n\n", "bullet"),
 
             ("Split-Step Fourier (SSF)\n", "heading"),
             ("Split-Step Fourier separates evolution into potential and kinetic parts. It applies the potential in position space and uses Fourier transforms to apply the kinetic "
