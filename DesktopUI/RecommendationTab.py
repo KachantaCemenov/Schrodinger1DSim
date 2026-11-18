@@ -523,7 +523,8 @@ class RecommendationTab(ttk.Frame):
 
         self.result_text.set("\n".join(lines))
         self.last_recommendation = result
-        self.candidate_filter.set("All candidates")
+        #self.candidate_filter.set("All candidates")
+        self.candidate_filter.set("Qualifying only")
         self.ShowSummary()
         self.RefreshReportControls()
 

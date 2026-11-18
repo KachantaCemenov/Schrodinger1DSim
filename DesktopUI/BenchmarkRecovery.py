@@ -10,8 +10,9 @@ This script is intended to save the checkpoint of a running benchmark so that wh
 The saved running benchmark can be read the next time the app is opened in order for it to be resumed
 """
 
-#Path.home() -> WindowsPath('C:/Users/Username')
-RECOVERY_ROOT = Path.home() / "Schrodinger1DSim" / "UnfinishedRuns"
+# Save to %LOCALAPPDATA%\Schrodinger1DSim
+APP_DATA_DIR = Path(os.environ["LOCALAPPDATA"]) / "Schrodinger1DSim"
+RECOVERY_ROOT = APP_DATA_DIR / "UnfinishedRuns"
 
 class BenchmarkWorkingDirectory:
     #Persistent until explicitly saved or discarded

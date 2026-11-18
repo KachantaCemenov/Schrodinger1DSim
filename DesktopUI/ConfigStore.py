@@ -1,11 +1,13 @@
 import json
 from dataclasses import asdict
 from pathlib import Path
+import os
 
 from Simulation import SimulationConfig
 
-#Path.home() -> WindowsPath('C:/Users/Username')
-CONFIG_FILE = Path.home() / "Schrodinger1DSim" / "configurations.json"
+#Save to %LOCALAPPDATA%\Schrodinger1DSim
+APP_DATA_DIR = Path(os.environ["LOCALAPPDATA"]) / "Schrodinger1DSim"
+CONFIG_FILE = APP_DATA_DIR / "configurations.json"
 BENCHMARK_CONFIG_FILE = CONFIG_FILE.with_name("benchmark_configurations.json")
 
 
