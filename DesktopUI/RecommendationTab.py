@@ -65,6 +65,10 @@ class RecommendationTab(ttk.Frame):
         self.recommendation_frame = ttk.LabelFrame(upper, text = "Recommendation", padding = 10)
         self.recommendation_frame.grid(row = 0, column = 1, sticky = "nsew")
 
+        #Boundary text
+        self.boundary_text = tk.StringVar(value = "Boundary: no problem selected")
+        ttk.Label(self.recommendation_frame, textvariable = self.boundary_text).pack(anchor = "w", pady = (0, 8))
+
         self.result_text = tk.StringVar(value = "Load a run to inspect the available tested candidates.")
         ttk.Label(self.recommendation_frame, textvariable = self.result_text, wraplength = 600, justify = "left").pack(anchor = "nw")
 
@@ -402,6 +406,7 @@ class RecommendationTab(ttk.Frame):
 
     def UpdateRequirements(self, problem_changed=False):
         if self.summary is None or self.summary.empty:
+            self.boundary_text.set("Boundary: no completed problem selected")
             self.l2_available = False
             self.reference_note.set("No completed candidates are available.")
 
@@ -413,6 +418,8 @@ class RecommendationTab(ttk.Frame):
             return
 
         problem = self.selection_vars["Problem"].get()
+        config = self.manifest["configuration"]["problems"][problem]
+        self.boundary_text.set(f"Boundary: {config['boundary_condition']} — applies to both solvers")
         data = self.summary.loc[self.summary["problem"] == problem]
 
         if problem_changed:

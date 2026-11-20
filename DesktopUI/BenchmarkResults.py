@@ -34,8 +34,31 @@ def ReadBenchmarkManifest(folder, *, allow_running = False):
     
     if not isinstance(problems, dict) or not problems:
         raise ValueError("The run must contain named problems.")
-    if any(not name.strip() for name in problems):
-        raise ValueError("Problem names cannot be empty.")
+
+    for name, data in problems.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Problem names must be nonempty strings.")
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Invalid configuration for problem '{name}'.")
+
+        #Support loading my old benchmark runs
+        boundary = data.get("boundary_condition")
+        if boundary is None:
+            boundary = "Periodic"
+
+        if boundary not in ("Periodic", "Dirichlet"):
+            raise ValueError(f"Problem '{name}' has an invalid boundary condition.")
+
+        if data.get("potential_type") == "Infinite Square Well":
+            raise ValueError(f"Problem '{name}' uses Infinite Square Well. This run format compares CN and FFT-based SSF, which does not support infinite walls.")
+
+        if boundary != "Periodic":
+            raise ValueError(f"Problem '{name}' declares Dirichlet boundaries, but this benchmark format compares both solvers using periodic boundaries.\n\n"
+                        "Existing results cannot be converted by changing their boundary label. Create a new periodic benchmark.")
+
+        data["boundary_condition"] = boundary
+
     if not isinstance(n_values, list) or not n_values:
         raise ValueError("The run must contain N values.")
     if not isinstance(dt_values, list) or not dt_values:
@@ -114,6 +137,7 @@ class BenchmarkResults(ttk.Frame):
         self.records = {}
         self.loaded_path = None
         self.data = None
+        self.problems = {}
 
         controls = ttk.Frame(self)
         controls.pack(fill="x", pady=(0, 5))
@@ -136,10 +160,9 @@ class BenchmarkResults(ttk.Frame):
             self.dropdowns[label] = dropdown
             AddToolTip(dropdown, READ_BENCHMARK_HELP[label]) #Add tooltip
 
-        """self.figure = Figure(figsize=(8, 3), dpi=100)
-        self.axes = self.figure.add_subplot(111)
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True)"""
+        #Add the boundary text
+        self.boundary_text = tk.StringVar(value = "Boundary: no problem selected")
+        ttk.Label(controls, textvariable = self.boundary_text).grid(row = 2, column = 0, columnspan = 4,sticky = "w", padx = 4, pady = (6, 0))
 
         #Make the table and graph sections into panedwindows
         self.result_panes = ttk.Panedwindow(self, orient="horizontal")
@@ -231,6 +254,8 @@ class BenchmarkResults(ttk.Frame):
     """
     def LoadRun(self, folder, manifest):
         self.folder = Path(folder)
+        self.problems = manifest["configuration"]["problems"]
+        self.boundary_text.set("Boundary: no completed problem selected")
         self.loaded_path = None
         self.data = None
         self.table_page = 0
@@ -280,6 +305,8 @@ class BenchmarkResults(ttk.Frame):
 
         problem = self.variables["Problem"].get()
         quantity = self.variables["Quantity"].get()
+        boundary = self.problems[problem]["boundary_condition"]
+        self.boundary_text.set(f"Boundary: {boundary}")
         n = self.variables["N"].get()
         dt = self.variables["dt"].get()
         columns = self.QUANTITIES[quantity]

@@ -926,8 +926,8 @@ class MainWindow(tk.Tk):
         console = self.benchmark_console
         console.configure(state="normal")
         console.insert("end",f"Run preview: {problem_count} problems, {combinations} problem/N/dt combinations.\n")
-        for name in run["problems"]:
-            console.insert("end", f"  {name}\n")
+        for name, data in run["problems"].items():
+            console.insert("end", f"  {name} — Boundary: {data['boundary_condition']}\n")
         console.see("end")
         console.configure(state="disabled")
         
