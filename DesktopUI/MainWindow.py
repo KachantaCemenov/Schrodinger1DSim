@@ -301,12 +301,26 @@ class MainWindow(tk.Tk):
                 checkbox = self.CreateConstantCheckbox(numerical_frame, entry, name)
                 checkbox.grid(row = row, column = 2, sticky = "w", padx = (6, 0), pady = 2)
         
+        #Make the boundary condition dropdown
+        ttk.Label(numerical_frame, text = "Boundary").grid(row = 5, column = 0, sticky = "w", padx = (0, 8), pady = 2)
+
+        self.benchmark_boundary = tk.StringVar(value = "Periodic")
+        self.benchmark_boundary_dropdown = ttk.Combobox(numerical_frame, textvariable = self.benchmark_boundary,
+                                                            values = BOUNDARY_CONDITIONS, state = "readonly")
+        self.benchmark_boundary_dropdown.grid(row = 5, column = 1, columnspan = 2, sticky = "ew", pady = 2)
+
+        AddToolTip(self.benchmark_boundary_dropdown, BENCHMARK_HELP["boundary_condition"])
+
         #Make new self field for wave/ pot types cus self.wave_type depends on entry in simulation tab
         self.benchmark_wave_type, self.benchmark_wave_entries, self.RefreshBenchmarkWaveFields = ( 
             self.CreateBenchmarkPresetSection("Wave Function", WAVE_PARAMETERS, row = 4))
 
         self.benchmark_potential_type, self.benchmark_potential_entries, self.RefreshBenchmarkPotentialFields = ( 
             self.CreateBenchmarkPresetSection("Potential", POTENTIAL_PARAMETERS, row = 5))
+
+        #Make self.RefreshBenchmarkBoundary() a listener to self.benchmark_potential_type
+        self.benchmark_potential_type.trace_add("write", lambda *_: self.RefreshBenchmarkBoundary()) 
+        self.RefreshBenchmarkBoundary()
 
 
         ttk.Button(self.benchmark_config_frame, text="Preview problem",
@@ -420,8 +434,15 @@ class MainWindow(tk.Tk):
 
         try:
             config, n_values, dt_values = self.BuildBenchmarkConfig()
+             
+            config = self.Check_SSF_Limitation_BenchmarkProblem(config, n_values)
+            if config is None:
+                return
+            """
             for n in n_values:
                 BuildBenchmarkProblem(replace(config, N = n)) #Try build it
+            """  #These are built inside Check_SSF_Limitation_BenchmarkProblem
+            
         except ValueError as e:
             messagebox.showerror("Invalid benchmark problem,", str(e), parent = self)
             return
@@ -454,6 +475,9 @@ class MainWindow(tk.Tk):
 
         for name, entry in self.benchmark_potential_entries.items():
             fill(entry, config.potential_parameters[name])
+
+        self.benchmark_boundary.set(config.boundary_condition)
+        self.RefreshBenchmarkBoundary()
 
     def LoadSelectedBenchmarkProblem(self):
         selection = self.benchmark_problem_list.curselection()
@@ -1045,7 +1069,8 @@ class MainWindow(tk.Tk):
             wave_type = wave_type,
             wave_parameters = wave_parameters,
             potential_type = potential_type,
-            potential_parameters = potential_parameters
+            potential_parameters = potential_parameters,
+            boundary_condition = self.benchmark_boundary.get()
             )
 
         return config, n_values, dt_values
@@ -1053,11 +1078,11 @@ class MainWindow(tk.Tk):
     def PreviewBenchmarkSweep(self):
         try:
             config, n_values, dt_values = self.BuildBenchmarkConfig()
+            config = self.Check_SSF_Limitation_BenchmarkProblem(config, n_values)
+            if config is None:
+                return
+
             step_lines = []
-            
-            for n in n_values:
-                setting = replace(config, N = n) #Make a copy of config with one changed field
-                BuildBenchmarkProblem(setting)
 
             for dt in dt_values:
                 steps = self.BenchmarkStepCheck(config.T_final, dt)
@@ -1071,6 +1096,7 @@ class MainWindow(tk.Tk):
         console = self.benchmark_console
         console.configure(state="normal")
         console.insert("end",f"{config.wave_type} & {config.potential_type}\n"
+                             f"Boundary: {config.boundary_condition}\n"
                              f"Sweep: {len(n_values)} N values x {len(dt_values)} dt values = {count} combinations.\n")
         console.insert("end", "".join(step_lines))
         console.see("end") #scroll down to "end" (tk.END)
@@ -1792,7 +1818,35 @@ class MainWindow(tk.Tk):
         else:
             self.simulation_boundary_dropdown.configure(state = "readonly")
 
+    def RefreshBenchmarkBoundary(self): #Force Dirichlet when ISW
+        if self.benchmark_potential_type.get() == "Infinite Square Well":
+            self.benchmark_boundary.set("Dirichlet")
+            self.benchmark_boundary_dropdown.configure(state = "disabled")
+        else:
+            self.benchmark_boundary_dropdown.configure(state = "readonly")
 
+    def Check_SSF_Limitation_BenchmarkProblem(self, config, n_values): #For Benchmark
+        if config.potential_type == "Infinite Square Well":
+            raise ValueError("Benchmark currently compares both CN and SSF. Use CN in Simulation for Infinite Square Well.\n\n" + INFINITE_WELL_SSF_MESSAGE)
+
+        periodic_config = replace(config, boundary_condition = "Periodic")
+
+        #Validate the proposed configuration 
+        for n in n_values:
+            BuildBenchmarkProblem(replace(periodic_config, N = n))
+
+        if config.boundary_condition == "Dirichlet": #Ask for confirmation
+            proceed = messagebox.askyesno("Change benchmark boundary?",
+                                "FFT-based SSF uses periodic boundaries.\n\n"
+                                "For a fair comparison, this benchmark must use periodic boundaries for both CN and SSF.\n\n"
+                                "Switch this problem to periodic boundaries? The two ends will be connected instead of fixing the wave to zero at the ends. The grid spacing also changes for the same N and spatial limits.",
+                                icon = "warning", default = "no", parent = self)
+            if not proceed:
+                return None
+
+            self.benchmark_boundary.set("Periodic")
+
+        return periodic_config
 
     #Methods for the run button ----------------------------------
 
@@ -1826,7 +1880,7 @@ class MainWindow(tk.Tk):
         if config.solver == "SSF" and config.boundary_condition == "Dirichlet":
             proceed = messagebox.askyesno("SSF requires periodic boundaries",
                     "The current Split-Step Fourier solver cannot enforce zero-value Dirichlet boundaries.\n\n"
-                    "Proceeding will change this simulation to Periodic boundaries. A wave leaving one domain edge can re-enter through the other, instead of reflecting from a zero-value boundary.\n\n"
+                    "Proceeding will change this simulation to Periodic boundaries. A wave leaving one domain edge will re-enter through the other, instead of reflecting from a zero-value boundary.\n\n"
                     "The grid spacing will also change because the periodic grid excludes the right endpoint.\n\n"
                     "Switch to Periodic boundaries and run?", icon = "warning", default = "no", parent = self)
 

@@ -175,6 +175,11 @@ BENCHMARK_HELP = {
     "saved_configuration": ("Select a saved benchmark configuration and click Load to restore its problems and sweep settings.\n\n"
                         "Choose the folder-opening option to view the configuration storage location.\n"
                         "To inspect calculated results, open a saved run in Read Benchmark."),
+
+    "boundary_condition": ("Periodic connects the two ends of the spatial domain.\n"
+                        "Dirichlet fixes the wave function to zero at both ends.\n\n"
+                        "The current benchmark compares CN and FFT-based SSF using periodic boundaries. FFT requires periodic boundary conditions, thus Dirichlet configuration is currently not supported in Benchmark."),
+      
 }
 
 READ_BENCHMARK_HELP = {
