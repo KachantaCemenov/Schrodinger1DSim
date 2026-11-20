@@ -13,6 +13,7 @@ from WaveFuncParser import ParseWaveFunction
 from Solvers.cranknicolson import CrankNicolsonSolver
 from Solvers.SSFSolver import SplitStepFourierSolver
 
+BOUNDARY_CONDITIONS = ("Periodic", "Dirichlet")
 @dataclass
 class SimulationConfig:
 
@@ -38,22 +39,32 @@ class SimulationConfig:
 
     wave_expression: str | None = None
 
+    boundary_condition: str | None = None #New field
+
+    def __post_init__(self):
+        # Old configurations don't contain a boundary condition. Preserve the behavior they had before it was added
+        if self.boundary_condition is None:
+            if self.potential_type == "Infinite Square Well":
+                self.boundary_condition = "Dirichlet"
+            else:
+                self.boundary_condition = "Periodic"
+
+        if self.boundary_condition not in BOUNDARY_CONDITIONS:
+            raise ValueError("Boundary condition must be Periodic or Dirichlet.")
+
+        # The current infinite-well implementation uses zero-value walls.
+        if self.potential_type == "Infinite Square Well" and self.boundary_condition != "Dirichlet":
+            raise ValueError("Infinite Square Well currently requires Dirichlet boundary conditions.")
+
 
 def BuildGrid(config):
-    """
-    if config.potential_type = "Infinite Square Well":
-        x_left = config.potential_parameters["x_left"]
-        x_right = config.potential_parameters["x_right"]
-        if x_left >= x_right:
-            raise ValueError("Infinite square well potential requires x_left < x_right.")
-        if config.solver != "Crank-Nicolson":
-            raise ValueError("Only Crank-Nicolson is currently supported for Infinite Square Well potential.")
+    if config.boundary_condition not in BOUNDARY_CONDITIONS:
+        raise ValueError("Boundary condition must be Periodic or Dirichlet.")
 
-        return Grid1D(x_left, x_right, config.N, periodic = False)
-    return Grid1D(config.x_min, config.x_max, config.N, periodic = True)
-    """
-    return Grid1D(config.x_min, config.x_max, config.N, 
-            periodic = (config.potential_type != "Infinite Square Well"))
+    if config.potential_type == "Infinite Square Well" and config.boundary_condition != "Dirichlet":
+        raise ValueError("Infinite Square Well currently requires Dirichlet boundary conditions.")
+
+    return Grid1D(config.x_min, config.x_max, config.N, periodic = (config.boundary_condition == "Periodic"))
 
 
 
@@ -116,6 +127,43 @@ def CheckSimulationCancelled(stop_event): #Just check if it should be stopped
         raise CancelledError("Simulation cancelled.")
 
 
+#Need a function to calculate observables because cannot use FFT to get momentum in Dirichlet config
+def CalculateDirichletObservables(wave, potential, mass, hbar): 
+    psi = wave.psi
+    dx = wave.grid.dx
+
+    inside = psi[1:-1]
+    weights = np.abs(inside) ** 2
+    probability = float(dx * np.sum(weights)) #psi^2 * dx
+
+    if not np.isfinite(probability) or probability <= 0:
+        raise ValueError("Cannot calculate observables for a zero or nonfinite wave.")
+
+    pot_values = np.asarray(potential.values, dtype = float)
+
+    if pot_values.shape != psi.shape:
+        raise ValueError("Potential and wave dimensions do not match.")
+
+    # Infinite-well walls have infinite pot_values, but inside must be finite
+    if not np.all(np.isfinite(pot_values[1:-1])):
+        raise ValueError("Potential must be finite inside the boundaries.")
+
+    # Central difference for the interior momentum expectation.
+    derivative = (psi[2:] - psi[:-2]) / (2 * dx)
+    expected_momentum = float((dx * np.vdot(inside, -1j * hbar * derivative)).real / probability) #momentum operator p = -i*hbar*(d/dx)
+
+    # Kinetic energy matching CN's finite-difference Hamiltonian.
+    differences = np.diff(psi)
+    kinetic = (hbar**2 / (2 * mass * dx) * np.vdot(differences, differences).real) #kinetic part of Hamiltonian
+
+    # Include potential energy for harmonic and barrier problems.
+    potential_energy = dx * np.sum(weights * pot_values[1:-1])
+
+    energy = float((kinetic + potential_energy) / probability)
+
+    return expected_momentum, energy
+
+
 def RunSimulation(config, stop_event = None):
     CheckSimulationCancelled(stop_event) 
     #Displayed values
@@ -128,7 +176,7 @@ def RunSimulation(config, stop_event = None):
         raise ValueError(f"Number of grid points N must be between 3 and {MAX_GRID_POINTS}.")
     if not np.all(np.isfinite(values)):
         raise ValueError("All input values must be finite.")
-    if config.potential_type != "Infinite Square Well" and config.x_max <= config.x_min:
+    if config.x_max <= config.x_min:
         raise ValueError("Use x_max > x_min.")
     if min(config.mass, config.hbar, config.dt, config.T_final) <= 0:
         raise ValueError("Mass, reduced Planck constant, time step, and final time must be positive.")
@@ -158,6 +206,11 @@ def RunSimulation(config, stop_event = None):
     display_grid = BuildGrid(config)
     is_well = config.potential_type == "Infinite Square Well"
     active = slice(None)
+
+    if not display_grid.periodic and config.solver == "SSF": #Guard these, SSF never accepts Dirichlet
+        if is_well:
+            raise ValueError(INFINITE_WELL_SSF_MESSAGE)
+        raise ValueError("The current SSF solver requires periodic boundaries. Use Crank-Nicolson for Dirichlet boundaries.")
 
     if is_well:
         if config.solver != "Crank-Nicolson":
@@ -191,12 +244,15 @@ def RunSimulation(config, stop_event = None):
         potential = BuildPotential(config, grid)
 
     wave = BuildWaveFunction(config, grid)
-    if is_well:
-        wave.psi[[0,-1]] = 0.0 #Enforce the boundary conditions for the infinite square well
+    if not grid.periodic: #if Dirichlet
+        # Enforce zero-value boundaries before starting evolution
+        wave.psi[[0, -1]] = 0.0
         norm = wave.Norm()
         if not np.isfinite(norm) or norm <= 0:
-            raise ValueError("Wave function must be nonzero inside well")
-        wave.Normalize() #Normalize ONCE
+            raise ValueError("The initial wave must be finite and nonzero inside Dirichlet boundaries.")
+        # Normalize ONCE
+        wave.Normalize()
+
     CheckSimulationCancelled(stop_event)
     solver_args = dict(dt = config.dt, hbar = config.hbar, mass = config.mass)
 
@@ -227,15 +283,7 @@ def RunSimulation(config, stop_event = None):
         CheckSimulationCancelled(stop_event) 
         time = step * config.dt
 
-        """rows.append((
-            time, 
-            wave.Norm(),
-            wave.Expectation_x(),
-            wave.Expectation_p(hbar = config.hbar),
-            wave.Expectation_energy(potential, mass = config.mass, hbar = config.hbar)
-        ))"""
-
-        if is_well:
+        """if is_well:
             #Calculate the metrics here without assuming periodicity
             psi = wave.psi.copy()
             dx = grid.dx
@@ -246,6 +294,14 @@ def RunSimulation(config, stop_event = None):
             energy = (config.hbar**2 / (2 * config.mass * dx) 
                      * np.vdot(differences, differences).real )
         else:
+            momentum = wave.Expectation_p(hbar = config.hbar)
+            energy = wave.Expectation_energy(potential, mass = config.mass, hbar = config.hbar)
+        """
+
+        if not grid.periodic:
+            momentum, energy = CalculateDirichletObservables(wave, potential, config.mass, config.hbar)
+        else:
+            #These expectation values functions in wave_function use FFT
             momentum = wave.Expectation_p(hbar = config.hbar)
             energy = wave.Expectation_energy(potential, mass = config.mass, hbar = config.hbar)
         rows.append((time, wave.Norm(), wave.Expectation_x(), momentum, energy))

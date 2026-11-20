@@ -23,6 +23,10 @@ from ComparingMethods.CompareMethods import RunComparison
 def HasBenchmarkReference(config):
     #These are based on what analytical functions I'm having
     #MANUALLY CHANGE THESE RETURNS when implement more analytical functions
+
+    if config.boundary_condition != "Periodic": #Change this once I check the analytical solutions in Dirichlet
+        return False
+
     if config.wave_mode != "Preset":
         return False
     if config.potential_type == "Free Particle":
@@ -73,6 +77,9 @@ def BuildBenchmarkProblem(config):
         raise ValueError("A benchmark run compares and calculate both Crank–Nicolson and SSF. "
                     "Infinite Square Well is currently available through Crank–Nicolson in Simulation.\n\n"
                     + INFINITE_WELL_SSF_MESSAGE)
+
+    if config.boundary_condition != "Periodic":
+        raise ValueError("The current benchmark compares CN and SSF using periodic boundaries. Confirm a switch to periodic boundaries before starting.")
 
     problem = (config.wave_type, config.potential_type)
     parameters = config.wave_parameters

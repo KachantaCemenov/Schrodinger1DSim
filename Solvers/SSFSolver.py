@@ -3,7 +3,11 @@ import numpy as np
 
 class SplitStepFourierSolver:
 
-    def __init__(self,grid,potential,dt,mass=1.0,hbar=1.0):
+    def __init__(self, grid, potential, dt ,mass = 1.0, hbar = 1.0):
+
+        if not grid.periodic: #FFS requires periodic boundaries
+            raise ValueError("Split-Step Fourier requires a periodic grid. Use Crank-Nicolson for Dirichlet boundaries.")
+
         self.grid = grid
         self.potential = potential
         self.dt = dt
