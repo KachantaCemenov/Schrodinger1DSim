@@ -28,6 +28,18 @@ The former is the Crank-Nicolson (CN) method, and the latter is Split-Step Fouri
 So far, I have observed that in general, SSF is faster and more accurate in many configuration, with CN being more accurate especially in some problems with very large $\frac{N}{dx}$ and $\frac{T}{dt}$. Details on these solvers and my observations will be added the "docs" folder.
 <!-- TODO THAT DOCS FOLDER -->
 
+Due to Fast Discrete Fourier Transform requires a periodic boundary condition, the current implementation of SSF does not support certain potential configurations such as the infinite square well. Periodic boundary condition means that the value of $\Psi(x, t)$ at the end of spatial domain is warped around to the start of the domain: $\Psi(x = x_{max}, t) = \Psi(x = x_{min}, t)$.
+
+The other boundary condition implemented in this application is the zero-value boundaries (Dirichlet): $\Psi(x = x_{max}, t) = \Psi(x = x_{min}, t) = 0$. Current only CN is able to work with this condition. This condition forces the wave function to behave inside the domain as if it is in an infinite square well.
+
 ## Features
 
+This program has four tabs: Simulation, Benchmark, ReadBenchmark, and Recommendation.
 
+### Simulation tab
+
+This tab contains the functions to propagate one wave function in a potential configuration over $\frac{N}{dx}$ grid points and $\frac{T}{dt}$ time steps. At each $dt$, these values of the wave function are recorded:
+- Norm
+- Expected position, $\langle x \rangle$
+- Expected momentum, $\langle p \rangle$
+- Expected energy, $\langle E \rangle$
