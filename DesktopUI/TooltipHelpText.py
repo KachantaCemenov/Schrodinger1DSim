@@ -138,6 +138,12 @@ SIMULATION_HELP = {
                             "A configuration stores inputs so they can be loaded again. It does not save calculated results; use Save Results for the simulation table."),
     "saved_configuration": ("Select a saved Simulation configuration, then click Load to fill the fields correspondingly.\n\n"
                             "Choose the folder-opening option to view the configuration storage location."),
+
+    "boundary_condition": ("Choose the boundary condition for wave evolution.\n\n"
+                        "Periodic: opposite domain edges are connected. A wave leaving one edge will re-enter through the other.\n\n"
+                        "Dirichlet: the wave is fixed to zero at both domain boundaries. These boundaries reflect the wave; they do not absorb it. Initial endpoint values are set to zero.\n\n"
+                        "For Infinite Square Well, zero-value boundaries are enforced at x_left and x_right inside the display domain.\n\n"
+                        "The current SSF solver requires Periodic boundaries."),
 }
 
 

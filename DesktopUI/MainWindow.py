@@ -12,7 +12,7 @@ from scipy.constants import m_e, hbar
 
 from ParameterDefinition import WAVE_PARAMETERS, POTENTIAL_PARAMETERS
 from ResultTable import ResultTable
-from Simulation import SimulationConfig, INFINITE_WELL_SSF_MESSAGE, SaveSimulationResults
+from Simulation import SimulationConfig, INFINITE_WELL_SSF_MESSAGE, SaveSimulationResults, BOUNDARY_CONDITIONS
 from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
@@ -1323,6 +1323,9 @@ class MainWindow(tk.Tk):
         for name, entry in self.potential_entries.items():
             fill(entry, config.potential_parameters[name])
 
+        self.simulation_boundary.set(config.boundary_condition)
+        self.RefreshSimulationBoundary()
+
     #Methods for recoveing disrupted benchmark runs
     def CheckBenchmarkRecovery(self):
         try:
@@ -1675,6 +1678,8 @@ class MainWindow(tk.Tk):
 
     def OnPotentialSelected(self,event=None):
 
+        self.RefreshSimulationBoundary()
+
         for widget in (self.potential_parameter_frame.winfo_children()):
             widget.destroy()
 
@@ -1739,6 +1744,22 @@ class MainWindow(tk.Tk):
                 checkbox = self.CreateConstantCheckbox(row, entry, name)
                 checkbox.pack(side = "left", padx = (6, 0))
 
+
+        #Boundary condition choice
+        boundary_row = ttk.Frame(frame)
+        boundary_row.pack(fill = "x", padx = 5, pady = 5)
+
+        ttk.Label(boundary_row, text = "Boundary:", width = 12).pack(side = "left")
+
+        self.simulation_boundary = tk.StringVar(master = self, value = "Periodic")
+
+        self.simulation_boundary_dropdown = ttk.Combobox(boundary_row, textvariable = self.simulation_boundary, values = BOUNDARY_CONDITIONS, state = "readonly")
+        self.simulation_boundary_dropdown.pack(side = "left", fill = "x", expand = True)
+
+        AddToolTip(self.simulation_boundary_dropdown, SIMULATION_HELP["boundary_condition"])
+
+        self.RefreshSimulationBoundary()
+                
         #Solver choice
         solver_row = ttk.Frame(frame)
 
@@ -1760,7 +1781,31 @@ class MainWindow(tk.Tk):
 
         self.run_button.pack(pady=10)
 
+    def RefreshSimulationBoundary(self):
+        # Potential fields are created before the numerical section
+        if not hasattr(self, "simulation_boundary_dropdown"):
+            return
+        #So set boundary condition automatically when ISW is selected
+        if self.potential_type.get() == "Infinite Square Well":
+            self.simulation_boundary.set("Dirichlet")
+            self.simulation_boundary_dropdown.configure(state = "disabled")
+        else:
+            self.simulation_boundary_dropdown.configure(state = "readonly")
+
+
+
     #Methods for the run button ----------------------------------
+
+    """
+    Behavior involves Solver and boundary conditions:
+    CN + Periodic	                        Runs periodically
+    CN + Dirichlet	                        Runs with zero endpoints
+    SSF + Periodic	                        Runs periodically
+    SSF + Dirichlet -> Yes	                Changes the dropdown and calculation to Periodic, then runs
+    SSF + Dirichlet -> No or close dialog	Does not run, preserves Dirichlet
+    SSF + Infinite Square Well	            Shows the existing explanation and does not run
+    """
+
     def OnRunSimulation(self):
         #If it should be stopped, don't run
         if self.close_requested or self.quit_prompt_open or self.simulation_future is not None or self.simulation_save_future is not None:
@@ -1778,6 +1823,21 @@ class MainWindow(tk.Tk):
                 "Infinite Square Well requires Crank–Nicolson", INFINITE_WELL_SSF_MESSAGE, parent=self)
             return
         
+        if config.solver == "SSF" and config.boundary_condition == "Dirichlet":
+            proceed = messagebox.askyesno("SSF requires periodic boundaries",
+                    "The current Split-Step Fourier solver cannot enforce zero-value Dirichlet boundaries.\n\n"
+                    "Proceeding will change this simulation to Periodic boundaries. A wave leaving one domain edge can re-enter through the other, instead of reflecting from a zero-value boundary.\n\n"
+                    "The grid spacing will also change because the periodic grid excludes the right endpoint.\n\n"
+                    "Switch to Periodic boundaries and run?", icon = "warning", default = "no", parent = self)
+
+            if not proceed:
+                return
+
+            # Update both the actual configuration and the displayed choice.
+            config = replace(config, boundary_condition = "Periodic")
+            self.simulation_boundary.set("Periodic")
+
+
         self.run_button.configure(state="disabled", text="Running...")
 
         #Run in a thread to not freezing the GUI 
@@ -1952,24 +2012,24 @@ class MainWindow(tk.Tk):
         return SimulationConfig(
                                 mass = mass,
                                 hbar = hbar,
-                                x_min=x_min,
-                                x_max=x_max,
-                                N=N,
-                                dt=dt,
-                                T_final=T_final,
-                                solver=self.solver_type.get(),
+                                x_min = x_min,
+                                x_max = x_max,
+                                N = N,
+                                dt = dt,
+                                T_final = T_final,
+                                solver = self.solver_type.get(),
 
-                                wave_mode=self.wave_input_mode.get(),
-                                wave_type=self.wave_type.get(),
-                                wave_parameters=wave_parameters,
+                                wave_mode = self.wave_input_mode.get(),
+                                wave_type = self.wave_type.get(),
+                                wave_parameters = wave_parameters,
 
-                                potential_type=self.potential_type.get(),
-                                potential_parameters=potential_parameters,
+                                potential_type = self.potential_type.get(),
+                                potential_parameters = potential_parameters,
 
-                                wave_expression=(
-                                    self.wave_expression_entry.get()
-                                    if self.wave_input_mode.get() == "Expression"
-                                    else None))
+                                wave_expression = (self.wave_expression_entry.get() if self.wave_input_mode.get() == "Expression"
+                                               else None),
+                                boundary_condition = self.simulation_boundary.get(),
+                                )
 
     #Checkboxes to fill in constants
     def CreateConstantCheckbox(self, parent, entry, name):
