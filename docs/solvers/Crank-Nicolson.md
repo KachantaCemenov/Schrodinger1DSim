@@ -26,12 +26,12 @@ Now, we turn to Taylor expansion to approximate the second order derivative with
 
 $$
 \begin{aligned}
-\Psi(x_j+h) &= \Psi_j + h\Psi'_j + \frac{h^2}{2}\Psi''_j
-+ \frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j
-+ \frac{h^5}{120}\Psi^{(5)}_j + O(h^6), \\
-\Psi(x_j-h) &= \Psi_j - h\Psi'_j + \frac{h^2}{2}\Psi''_j 
-- \frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j
-- \frac{h^5}{120}\Psi^{(5)}_j + O(h^6).
+\Psi(x_j+h) &= \Psi_j + h\Psi'_j + \frac{h^2}{2}\Psi''_j +
+\frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j + 
+\frac{h^5}{120}\Psi^{(5)}_j + O(h^6), \\
+\Psi(x_j-h) &= \Psi_j - h\Psi'_j + \frac{h^2}{2}\Psi''_j - 
+\frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j - 
+\frac{h^5}{120}\Psi^{(5)}_j + O(h^6).
 \end{aligned}
 $$
 
