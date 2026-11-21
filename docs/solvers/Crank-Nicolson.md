@@ -5,6 +5,7 @@ This document derives the Crank–Nicolson (CN) update used by this program and 
 ## 1. Starting equation
 
 The time-dependent Schrödinger equation is
+
 $$
 i\hbar \frac{\partial \Psi(x,t)}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi(x,t)}{\partial x^2} + V(x)\Psi(x,t).
 $$
@@ -176,20 +177,28 @@ $$
 
 Because $A$ and $B$ are functions of the same Hermitian matrix, this update is unitary. Consequently, it preserves the discrete norm (up to an extend in this numerical solution). CN is stable for this linear Schrödinger evolution, but that does not imply accuracy: large $\Delta t$ can still produce substantial phase error. Spatial accuracy is likewise limited by $\Delta x$.
 
-In exact arithmetic, the discrete energy associated with $H$ is also conserved because the update commutes with $H$. There is a diagnostic caveat in the current application: for periodic simulations, the reported energy calculates kinetic energy using Fourier-space $\frac{\hbar^2 k^2}{(2m)}$, while CN advances the state using a finite-difference kinetic Hamiltonian. These are not identical discrete kinetic operators, so the reported CN energy drift need not be zero even when the CN update preserves the energy associated with its own matrix $H$. For Dirichlet simulations, the energy diagnostic uses a finite-difference kinetic expression aligned with the CN discretization.
+In exact arithmetic, the discrete energy associated with $H$ is also conserved because the update commutes with $H$. There is a diagnostic mismatch in the current application: for simulations with periodic bounday condition, the reported energy calculates kinetic energy using Fourier-space $\frac{\hbar^2 k^2}{(2m)}$, while CN advances the state using a finite-difference kinetic Hamiltonian. These are not identical discrete kinetic operators, so the reported CN energy drift need not be zero even when the CN update preserves the energy associated with its own matrix $H$. For Dirichlet simulations, the energy diagnostic uses a finite-difference kinetic expression aligned with the CN discretization.
 
 The code does not renormalize the wavefunction after each CN step, because that would defeat the purpose of measuring the norm deviation.
 
 ## 7. Scope and limitations
 
 - CN supports periodic and Dirichlet boundaries in the Simulation tab. The potential is real and time-independent in the current implementation.
-- The periodic-grid norm and the Dirichlet-grid norm are discrete approximations to $\int |\Psi(x)|^2\,dx$, using $\Delta x\sum_j |\Psi_j|^2$ over the represented points (interior points for Dirichlet boundaries).
+- The periodic-grid norm and the Dirichlet-grid norm $\int |\Psi(x)|^2\,dx$ are discretely approximated by calculating $\Delta x\sum_j |\Psi_j|^2$ over the represented points (interior points for Dirichlet boundaries).
 - The finite-difference kinetic operator has a different dispersion relation from the Fourier spectral kinetic operator used by SSF. Differences between CN and SSF therefore reflect both their time-propagation methods and their spatial kinetic-energy discretizations.
 - Error and runtime comparisons depend on the initial state, potential, grid, time step, total simulated time, and the reference solution used. The scheme alone does not establish that one solver is always more accurate or faster.
 
-## Code references
+## Implementations
 
 - CN matrix assembly and time stepping: [`Solvers/cranknicolson.py`](../../Solvers/cranknicolson.py)
 - Periodic and Dirichlet grid construction: [`grid.py`](../../grid.py)
 - Simulation boundary handling and infinite-well setup: [`DesktopUI/Simulation.py`](../../DesktopUI/Simulation.py)
 - Split-step implementation for comparison: [`Solvers/SSFSolver.py`](../../Solvers/SSFSolver.py)
+
+## References
+<!-- TODO citing in lines-->
+[Numerical Solution of Schrödinger Equation by Crank–Nicolson Method - Khan - 2022 - Mathematical Problems in Engineering - Wiley Online Library](https://onlinelibrary.wiley.com/doi/full/10.1155/2022/6991067)
+
+[On the Analytical and Numerical Solutions of the One‐Dimensional Nonlinear Schrodinger Equation - Farag - 2021 - Mathematical Problems in Engineering - Wiley Online Library](https://onlinelibrary.wiley.com/doi/full/10.1155/2021/3094011)
+
+[A comparison of numerical approaches to the solution of the time-dependent Schrödinger equation in one dimension - PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC7594019/)
