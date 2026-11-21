@@ -26,12 +26,8 @@ Now, we turn to Taylor expansion to approximate the second order derivative with
 
 $$
 \begin{aligned}
-\Psi(x_j+h) &= \Psi_j + h\Psi'_j + \frac{h^2}{2}\Psi''_j +
-\frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j + 
-\frac{h^5}{120}\Psi^{(5)}_j + O(h^6), \\
-\Psi(x_j-h) &= \Psi_j - h\Psi'_j + \frac{h^2}{2}\Psi''_j - 
-\frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j - 
-\frac{h^5}{120}\Psi^{(5)}_j + O(h^6).
+\Psi(x_j+h) &= \Psi_j + h\Psi'_j + \frac{h^2}{2}\Psi''_j + \frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j + \frac{h^5}{120}\Psi^{(5)}_j + O(h^6), \\
+\Psi(x_j-h) &= \Psi_j - h\Psi'_j + \frac{h^2}{2}\Psi''_j - \frac{h^3}{6}\Psi'''_j + \frac{h^4}{24}\Psi^{(4)}_j - \frac{h^5}{120}\Psi^{(5)}_j + O(h^6).
 \end{aligned}
 $$
 
@@ -56,6 +52,7 @@ $$
 \approx
 \frac{\Psi_{j+1}-2\Psi_j+\Psi_{j-1}}{(\Delta x)^2},
 $$
+
 The term $\frac{h^2}{12}\Psi^{(4)}_j$ was the leading error, since it was proportional to $h^2$, I omitted it and consider the approximation has a second-order accuracy. Hence the error of this approximation after omitting that term is $O((h)^2)$ or $O((\Delta x)^2)$ for sufficiently wavefunctions.
 
 Now we substituting that approximation of $\frac{\partial^2\Psi}{\partial x^2}$ into the Hamiltonian expression:
