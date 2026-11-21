@@ -109,7 +109,7 @@ where $\widetilde{\Psi}(k,t)$ is the Fourier transform of the wavefunction. This
 On a grid with $N$ points and spacing $\Delta x$, the code obtains the discrete Fourier wave numbers from
 
 $$
-k_q = 2\pi\,\operatorname{fftfreq}(N,\Delta x).
+k_q = 2\pi\,\text{fftfreq}(N,\Delta x).
 $$
 
 with fftfreq being the discrete Fourier transform of the spatial domain, implemented by numpy.fft.fftfreq.
@@ -117,7 +117,7 @@ with fftfreq being the discrete Fourier transform of the spatial domain, impleme
 For each wave number $k_q$, it calculates the kinetic phase
 
 $$
-\exp\!\left(-i\frac{\hbar k_q^2\Delta t}{2m}\right).
+\exp\left(-i\frac{\hbar k_q^2\Delta t}{2m}\right).
 $$
 
 In the implementation this array is stored as `self.T_full`. NumPy's FFT converts the wavefunction to Fourier space, and its inverse FFT returns it to position space.
@@ -136,7 +136,7 @@ $$
 \end{aligned}
 $$
 
-Here $\mathcal{F}$ and $\mathcal{F}^{-1}$ mean the discrete Fourier transform and its inverse. In code, the steps in `Step` are:
+With $\mathcal{F}$ and $\mathcal{F}^{-1}$ being the discrete Fourier transform and its inverse. In code, the steps in `Step` are:
 
 1. Multiply `wave.psi` by `self.V_half`.
 2. Apply `np.fft.fft` to transform the wavefunction to Fourier space.
