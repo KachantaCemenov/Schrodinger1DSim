@@ -74,10 +74,10 @@ H_{jj} = \frac{\hbar^2}{m(\Delta x)^2}+V_j,
 H_{j,j-1}=H_{j,j+1}=-\frac{\hbar^2}{2m(\Delta x)^2},
 $$
 
-The Hamiltonian matrix currently look like this: 
+Then the Hamiltonian matrix would look like this: 
 
 $$
-\widehat{H}=
+{H}=
 \begin{bmatrix}
 \frac{\hbar^2}{m(\Delta x)^2}+V_0 & -\frac{\hbar^2}{2m(\Delta x)^2}   & 0   & \cdots & 0 \\
 -\frac{\hbar^2}{2m(\Delta x)^2}   & \frac{\hbar^2}{m(\Delta x)^2}+V_1 & -\frac{\hbar^2}{2m(\Delta x)^2}   & \ddots & \vdots \\
@@ -85,7 +85,8 @@ $$
 \vdots & \ddots & \ddots & \ddots & c \\
 0   & \cdots & 0 & -\frac{\hbar^2}{2m(\Delta x)^2} & \frac{\hbar^2}{m(\Delta x)^2}+V_{N-1}
 \end{bmatrix}.
-$$
+$$ 
+
 which is an $N \times N$ tridiagonal matrix. With $\Psi(x)$ being a $N \times 1$ matrix, ${H}\Psi(x)$ would produce a $N \times 1$.
 
 
