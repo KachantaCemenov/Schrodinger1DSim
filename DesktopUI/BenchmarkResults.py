@@ -7,6 +7,8 @@ from itertools import product
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from threading import Thread
+from queue import Queue, Empty
 
 from ResultTable import ResultTable
 from Tooltips import AddToolTip
@@ -139,6 +141,17 @@ class BenchmarkResults(ttk.Frame):
         self.data = None
         self.problems = {}
 
+        #For the convergence display
+        self.manifest = None
+        self.run_generation = 0
+
+        self.convergence_cache = {}
+        self.convergence_table = None
+        self.convergence_key = None
+        self.convergence_busy = False
+        self.convergence_queue = Queue()
+        self.plot_mode = tk.StringVar(value = "Against time") #default
+
         controls = ttk.Frame(self)
         controls.pack(fill="x", pady=(0, 5))
 
@@ -163,6 +176,21 @@ class BenchmarkResults(ttk.Frame):
         #Add the boundary text
         self.boundary_text = tk.StringVar(value = "Boundary: no problem selected")
         ttk.Label(controls, textvariable = self.boundary_text).grid(row = 2, column = 0, columnspan = 4,sticky = "w", padx = 4, pady = (6, 0))
+
+        #A dropdown for switching to convergence graphs
+        mode_frame = ttk.Frame(self)
+        mode_frame.pack(fill = "x", pady = (0, 6))
+        ttk.Label(mode_frame, text = "Plot mode:").pack(side = "left")
+        self.plot_mode_dropdown = ttk.Combobox(mode_frame, textvariable = self.plot_mode,values = ("Against time",
+                                                                                                "Vary dt (fixed N)",
+                                                                                                "Vary N (fixed dt)"), state = "disabled", width = 24)
+        self.plot_mode_dropdown.pack(side = "left", padx = 8)
+        self.plot_mode_dropdown.bind("<<ComboboxSelected>>", self.ShowSelection)
+
+        AddToolTip(self.plot_mode_dropdown, READ_BENCHMARK_HELP["plot_mode"])
+
+        self.plot_status = tk.StringVar()
+        ttk.Label(mode_frame, textvariable = self.plot_status, wraplength = 650).pack(side = "left", padx = 8)
 
         #Make the table and graph sections into panedwindows
         self.result_panes = ttk.Panedwindow(self, orient="horizontal")
@@ -200,6 +228,21 @@ class BenchmarkResults(ttk.Frame):
         AddToolTip(self.next_page_button, READ_BENCHMARK_HELP["next"])
 
     def RefreshTable(self):
+        #convergence table
+        if self.convergence_table is not None:
+            table = self.convergence_table
+            start = self.table_page * self.table_page_size
+            end = min(start + self.table_page_size, len(table))
+
+            page = table.iloc[start:end]
+            formatted = page.map(lambda value: "N/A" if pd.isna(value) else f"{value:.16g}")
+            self.result_table.LoadDataFrame(formatted)
+
+            self.table_page_text.set(f"Rows {start + 1}–{end} of {len(table)}")
+            self.previous_page_button.configure(state = "normal" if self.table_page > 0 else "disabled")
+            self.next_page_button.configure(state = "normal" if end < len(table) else "disabled")
+            return
+
         if self.data is None:
             self.result_table.LoadDataFrame(pd.DataFrame(columns=["Time", "Crank–Nicolson", "SSF"]))
             self.table_page_text.set("No results loaded")
@@ -223,9 +266,12 @@ class BenchmarkResults(ttk.Frame):
         self.next_page_button.configure(state="normal" if end < len(self.data) else "disabled")
 
     def ChangeTablePage(self, direction): 
-        if self.data is None:
+        table = (self.convergence_table if self.convergence_table is not None else self.data)
+
+        if table is None or table.empty:
             return
-        last_page = (len(self.data) - 1) // self.table_page_size
+
+        last_page = (len(table) - 1) // self.table_page_size
         self.table_page = max(0, min(self.table_page + direction, last_page))
         self.RefreshTable()
 
@@ -253,6 +299,18 @@ class BenchmarkResults(ttk.Frame):
         self.ShowSelection()
     """
     def LoadRun(self, folder, manifest):
+
+        self.run_generation += 1
+        self.manifest = manifest
+
+        self.convergence_cache.clear()
+        self.convergence_table = None
+        self.convergence_key = None
+
+        self.plot_mode.set("Against time")
+        self.plot_mode_dropdown.configure(state = "disabled")
+        self.plot_status.set("")
+
         self.folder = Path(folder)
         self.problems = manifest["configuration"]["problems"]
         self.boundary_text.set("Boundary: no completed problem selected")
@@ -280,6 +338,7 @@ class BenchmarkResults(ttk.Frame):
 
         self.SetResultChoices("Problem", list(dict.fromkeys(key[0] for key in self.records)))
         self.SetResultChoices("Quantity", list(self.QUANTITIES))
+        self.plot_mode_dropdown.configure(state = "readonly")
         self.ShowSelection()
 
     def SetResultChoices(self, label, choices):
@@ -288,20 +347,140 @@ class BenchmarkResults(ttk.Frame):
             self.variables[label].set(choices[0] if choices else "")
 
     def UpdateResultChoices(self):
-        problem = self.variables["Problem"].get()
+        from BenchmarkConvergence import CONVERGENCE_QUANTITIES
 
-        n_values = list(dict.fromkeys(n for p, n, dt in self.records if p == problem))
+        problem = self.variables["Problem"].get()
+        mode = self.plot_mode.get()
+
+        if mode == "Against time":
+            self.SetResultChoices("Quantity", list(self.QUANTITIES))
+        else:
+            self.SetResultChoices("Quantity", list(CONVERGENCE_QUANTITIES))
+
+        n_values = sorted({n for p, n, dt in self.records if p == problem}, key = int)
         self.SetResultChoices("N", n_values)
 
-        selected_n = self.variables["N"].get()
-        dt_values = list(dict.fromkeys(dt for p, n, dt in self.records if p == problem and n == selected_n))
+        if mode == "Vary N (fixed dt)":
+            dt_values = sorted({dt for p, n, dt in self.records if p == problem}, key = float)
+        else:
+            selected_n = self.variables["N"].get()
+            dt_values = sorted({dt for p, n, dt in self.records if p == problem and n == selected_n}, key = float)
+
         self.SetResultChoices("dt", dt_values)
+
+        if mode == "Vary dt (fixed N)":
+            self.variables["dt"].set("")
+            self.dropdowns["dt"].configure(state = "disabled")
+        elif mode == "Vary N (fixed dt)":
+            self.variables["N"].set("")
+            self.dropdowns["N"].configure(state = "disabled")
+
+
+    def ClearConvergenceDisplay(self, message):
+        #Remove the previous graph and table while reading another selection
+        self.data = None
+        self.loaded_path = None
+        self.convergence_table = None
+        self.table_page = 0
+        self.RefreshTable()
+
+        self.axes.clear()
+        self.axes.text(0.5, 0.5, message, ha = "center", va = "center", transform = self.axes.transAxes)
+        self.axes.set_axis_off()
+        self.canvas.draw_idle()
+        self.plot_status.set(message)
+
+    def ShowConvergence(self):
+        from BenchmarkConvergence import BuildConvergenceData #Import in here because it would be an import loop if import at top
+
+        problem = self.variables["Problem"].get()
+        mode = self.plot_mode.get()
+        fixed_field = "N" if mode == "Vary dt (fixed N)" else "dt"
+        fixed_value = self.variables[fixed_field].get()
+
+        boundary = self.problems[problem]["boundary_condition"]
+        self.boundary_text.set(f"Boundary: {boundary}")
+
+        key = (self.run_generation, problem, mode, fixed_value)
+        self.convergence_key = key
+
+        if key in self.convergence_cache:
+            self.DrawConvergence(self.convergence_cache[key])
+            return
+
+        self.ClearConvergenceDisplay("Reading convergence data...")
+
+        #Only one reader at a time. When it finishes, load the latest selection.
+        if self.convergence_busy:
+            self.plot_status.set("Waiting for the previous data read...")
+            return
+
+        folder = self.folder
+        manifest = self.manifest
+        output = self.convergence_queue
+
+        def Work():
+            try:
+                data = BuildConvergenceData(folder, manifest, problem, mode, fixed_value)
+                output.put((key, data, None))
+            except Exception as error:
+                output.put((key, None, str(error)))
+
+        self.convergence_busy = True
+
+        try:
+            #Read-only worker: it never accesses Tkinter widgets or writes files
+            Thread(target = Work, daemon = True).start()
+        except Exception as error:
+            self.convergence_busy = False
+            self.ClearConvergenceDisplay("Could not start the data reader.")
+            messagebox.showerror("Cannot read convergence data", str(error), parent = self)
+            return
+
+        self.after(100, self.PollConvergence)
+
+    def PollConvergence(self):
+        try:
+            key, data, error = self.convergence_queue.get_nowait()
+        except Empty:
+            self.after(100, self.PollConvergence)
+            return
+
+        self.convergence_busy = False
+
+        #A result from a previously loaded run must not enter the new cache
+        if key[0] == self.run_generation and error is None:
+            self.convergence_cache[key] = data
+
+        if self.plot_mode.get() == "Against time" or not self.records:
+            return
+
+        if key != self.convergence_key:
+            #The user changed the run, problem, or fixed parameter
+            self.ShowConvergence()
+            return
+
+        if error is not None:
+            self.ClearConvergenceDisplay("Unable to read convergence data.")
+            messagebox.showerror(
+                "Cannot read convergence data", error, parent = self)
+            return
+
+        self.DrawConvergence(data)
+
 
     #Show the a selected problem in the run
     def ShowSelection(self, event = None):
         if not self.records: #Only populate valid combinations before read
             return
         self.UpdateResultChoices()
+        if self.plot_mode.get() != "Against time":
+            self.ShowConvergence()
+            return
+
+        self.convergence_key = None
+        self.convergence_table = None
+        self.plot_status.set("")
 
         problem = self.variables["Problem"].get()
         quantity = self.variables["Quantity"].get()
@@ -354,22 +533,16 @@ class BenchmarkResults(ttk.Frame):
             self.canvas.draw_idle()
             self.RefreshTable()
             return
-
-
-
+        
         self.axes.clear()
         self.axes.set_axis_on()
-        self.axes.plot(
-            self.data["time"],
-            self.data[columns[0]],
-            label="Crank–Nicolson",
-        )
-        self.axes.plot(
-            self.data["time"],
-            self.data[columns[1]],
-            label="SSF",
-            linestyle="--",
-        )
+        self.axes.plot(self.data["time"],
+                        self.data[columns[0]],
+                        label = "Crank–Nicolson")
+        self.axes.plot(self.data["time"],
+                        self.data[columns[1]],
+                        label = "SSF",
+                        linestyle="--")
         self.axes.set_xlabel("Time")
         self.axes.set_ylabel(quantity)
         self.axes.set_title(f"{problem} — N={n}, dt={dt}")
@@ -378,3 +551,72 @@ class BenchmarkResults(ttk.Frame):
         self.figure.tight_layout()
         self.canvas.draw_idle()
         self.RefreshTable()
+
+    def DrawConvergence(self, data):
+        from BenchmarkConvergence import MakeConvergenceTable #Would be import loop if import at top
+
+        mode = self.plot_mode.get()
+        quantity = self.variables["Quantity"].get()
+        problem = self.variables["Problem"].get()
+
+        table = MakeConvergenceTable(data, mode, quantity)
+        varying_field = table.columns[0]
+        fixed_field = "N" if varying_field == "dt" else "dt"
+        fixed_value = self.variables[fixed_field].get()
+
+        self.data = None
+        self.loaded_path = None
+        self.convergence_table = table
+        self.table_page = 0
+        self.RefreshTable()
+
+        self.axes.clear()
+        self.axes.set_axis_on()
+        self.axes.set_title(f"{problem} — {fixed_field}={fixed_value}")
+        self.axes.set_xlabel(varying_field)
+        self.axes.set_ylabel(quantity)
+
+        values = table[["Crank–Nicolson", "SSF"]]
+        available = values.stack().dropna()
+
+        if available.empty:
+            self.axes.text(0.5, 0.5,
+                            "This error metric is unavailable.\nNo analytical-reference error values were recorded.",
+                            ha = "center", va = "center",
+                            transform = self.axes.transAxes)
+            self.axes.set_axis_off()
+            self.plot_status.set("L2 error unavailable; table shows N/A.")
+            self.canvas.draw_idle()
+            return
+
+        for method, style in (("Crank–Nicolson", "-"), ("SSF", "--")):
+            self.axes.plot(table[varying_field],
+                            table[method],
+                            marker = "o",
+                            linestyle = style,
+                            label = method)
+
+        #N and dt must be positive for log-log. Zero error must remain visible.
+        self.axes.set_xscale("log")
+
+        if (available > 0).all():
+            self.axes.set_yscale("log")
+            scale_note = "Logarithmic axes."
+        else:
+            self.axes.set_yscale("linear")
+            scale_note = "Linear error axis because zero values are present."
+
+        notes = [f"{len(table)} completed combinations.", scale_note]
+
+        if len(table) < 2:
+            notes.append("At least two points are needed to inspect a trend.")
+
+        if values.isna().any().any():
+            notes.append("Unavailable values are shown as N/A.")
+
+        self.plot_status.set(" ".join(notes))
+
+        self.axes.legend()
+        self.axes.grid(alpha = 0.25, which = "both")
+        self.figure.tight_layout()
+        self.canvas.draw_idle()

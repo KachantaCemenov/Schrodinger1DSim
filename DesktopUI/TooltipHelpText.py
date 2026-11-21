@@ -205,6 +205,9 @@ READ_BENCHMARK_HELP = {
         "Paging does not change the graph or saved results."),
     "next": ("Display the next page of table rows.\n"
         "Paging does not change the graph or saved results."),
+    "plot_mode": ("Against time shows one completed calculation.\n\nVary dt holds N fixed. Vary N holds dt fixed.\n"
+            "Convergence plots show the maximum error or drift over each calculation's recorded time steps.\n\n"
+            "Only completed combinations are included."),
 }
 
 

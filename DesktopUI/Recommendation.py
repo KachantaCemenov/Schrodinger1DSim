@@ -53,7 +53,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size = 50_000, *
     if read_runtime:
         runtimes = ReadRecommendationRuntime(runtime_path) #get the runtime out
     else:
-        runtime = {"CN": np.nan, "SSF": np.nan}
+        runtimes = {"CN": np.nan, "SSF": np.nan}
 
     dt = float(record["dt"])
     T = float(config["T_final"])
