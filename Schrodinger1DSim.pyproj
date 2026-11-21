@@ -88,6 +88,7 @@
     <Content Include="ComparingMethods\Results\CSV\wavefunction_data_September 22, 2026.csv" />
     <Content Include="DesktopUI\TooltipHelpText.py" />
     <Content Include="docs\solvers\Crank-Nicolson.md" />
+    <Content Include="docs\solvers\Split-Step-Fourier.md" />
     <Content Include="README.md" />
     <Content Include="requirements.txt" />
   </ItemGroup>

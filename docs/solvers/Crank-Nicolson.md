@@ -54,7 +54,7 @@ $$
 \frac{\Psi_{j+1}-2\Psi_j+\Psi_{j-1}}{(\Delta x)^2},
 $$
 
-The term $\frac{h^2}{12}\Psi^{(4)}_j$ was the leading error, since it was proportional to $h^2$, I omitted it and consider the approximation has a second-order accuracy. Hence the error of this approximation after omitting that term is $O((h)^2)$ or $O((\Delta x)^2)$ for sufficiently wavefunctions.
+The term $\frac{h^2}{12}\Psi^{(4)}_j$ was the leading error, since it was proportional to $h^2$, I omitted it and consider the approximation has a second-order accuracy. Hence the error of this approximation after omitting that term is $O((h)^2)$ or $O((\Delta x)^2)$ for sufficiently smooth wavefunctions.
 
 Now we substituting that approximation of $\frac{\partial^2\Psi}{\partial x^2}$ into the Hamiltonian expression:
 
