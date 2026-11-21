@@ -1,7 +1,6 @@
 from pathlib import Path
 import math
 import re
-
 import numpy as np
 import pandas as pd
 
@@ -35,7 +34,7 @@ def ReadRecommendationRuntime(path):
         runtimes[method] = value
     return runtimes
 
-def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
+def SummarizeBenchmarkCombination(folder, record, config, chunk_size = 50_000, *, read_runtime=True):
     #One summary row per solver of one combination, no loading the full csv cus it may freeze the app
 
     run_folder = Path(folder).resolve()
@@ -44,13 +43,17 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size=50_000):
     csv_path = (setting_folder / "comparison_data.csv").resolve()
     runtime_path = (setting_folder / "runtime_data.txt").resolve()
 
-    for path in (csv_path, runtime_path):
+    paths = (csv_path, runtime_path) if read_runtime else (csv_path,)
+    for path in paths:
         if not path.is_relative_to(run_folder):
             raise ValueError("A result file points outside the run folder.")
         if not path.is_file():
             raise ValueError(f"Can not find any result files at {path}.")
 
-    runtimes = ReadRecommendationRuntime(runtime_path) #get the runtime out
+    if read_runtime:
+        runtimes = ReadRecommendationRuntime(runtime_path) #get the runtime out
+    else:
+        runtimes = {"CN": np.nan, "SSF": np.nan}
 
     dt = float(record["dt"])
     T = float(config["T_final"])
