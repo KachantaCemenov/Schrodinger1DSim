@@ -56,7 +56,7 @@ The maximum norm drift is the largest $\Delta_{norm}$ over all $t$. The initial 
 
 ### Energy drift
 
-For each periodic benchmark state, both solvers report energy using the same Fourier-space kinetic-energy diagnostic:
+For each periodic benchmark state, SSF reports energy using the Fourier-space kinetic-energy diagnostic:
 
 $$
 \langle E\rangle
@@ -68,6 +68,14 @@ $$
      {\displaystyle\sum_j |\Psi_j|^2}.
 $$
 
+While CN reports energy using its own Hamiltonian matrix:
+
+$$
+\langle E\rangle
+=
+\frac{\Psi^\dagger H_{CN} \Psi}{(\Psi^\dagger \Psi)}.
+$$
+
 The energy drift is the absolute change from the initial reported energy,
 
 $$
@@ -76,7 +84,50 @@ $$
 
 and the maximum energy drift is the largest value over all $t$.
 
-This is a shared diagnostic for comparing the methods, but it is not exactly the energy associated with CN's periodic finite-difference Hamiltonian. CN utilize a different form for its discrete Hamiltonian, so the Fourier-based diagnostic method can potentially drift during a CN run. SSF uses the Fourier-space kinetic operator, but its split update does not generally conserve the full energy exactly. A measured energy drift should therefore be interpreted as this reported phenomenon, not yet as proof that either solver has failed.
+In an ealier version of this program (v0.1.0-beta) there was a CN energy diagnostic bug which has now been fixed. The program does not support marking or recalculating the CN energy values in the earlier bugged version.
+
+### Global phase difference and phase-aligned $L^2$ error
+
+The benchmark also records the global phase difference between the numerical wavefunction and the analytical reference. It first normalizes both wavefunctions and calculates their overlap:
+
+$$
+C =
+\left\langle
+\frac{\Psi_{\mathrm{ref}}}{\|\Psi_{\mathrm{ref}}\|}
+\middle|
+\frac{\Psi_{\mathrm{num}}}{\|\Psi_{\mathrm{num}}\|}
+\right\rangle.
+$$
+
+The global phase difference is the angle of this overlap:
+
+$$
+\Delta\phi = \arg(C).
+$$
+
+This value is reported in radians and wrapped to the range $[-\pi,\pi]$. It describes a single overall phase offset between the two wavefunctions.
+
+The ordinary $L^2$ error compares the wavefunctions directly, including this global phase offset. Phase-aligned $L^2$ error is $L^2$ error calculated after removing the phase offset by:
+
+$$
+\Psi_{\mathrm{num,aligned}}
+=
+e^{-i\Delta\phi}\Psi_{\mathrm{num}}.
+$$
+
+It then calculates
+
+$$
+\left\|\Psi_{\mathrm{num,aligned}}-\Psi_{\mathrm{ref}}\right\|_2
+=
+\sqrt{\Delta x\sum_j
+\left|\Psi_{\mathrm{num,aligned},j}-\Psi_{\mathrm{ref},j}\right|^2}.
+$$
+
+The phase-aligned error reflects the difference in the waves' amplitudes while ignoring the phase offset. Comparing it with the ordinary $L^2$ error illustrate how much deviation was due to a global phase offset.
+
+These two diagnostics require an analytical reference. They are reported as unavailable if there is no reference or if the normalized overlap is too small for reliable phase alignment. They are available in the Read Benchmark time-series graph and table; they are not currently used by the convergence plots or Recommendation constraints.
+
 
 ## 3. How to read convergence results
 

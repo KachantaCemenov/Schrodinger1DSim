@@ -195,7 +195,9 @@ READ_BENCHMARK_HELP = {
     "Quantity": ("Choose the quantity displayed in both the graph and table.\n\n"
                 "Norm is the wave-function norm, not norm error.\n"
                 "Position, momentum, and energy are expectation values.\n"
-                "L2 error compares the numerical wave with an analytical reference; it is unavailable when no reference was used.\n\n"
+                "L2 error compares the numerical wave with an analytical reference; it is unavailable when no reference was used.\n"
+                "Global phase difference is the difference in phase of the two wavefunction.\n"
+                "Phase-aligned L2 error is L2 error after removing the phase difference.\n\n"
                 "Units follow the unit system used for the benchmark."),
     "N": ("Choose a completed spatial-grid size for this problem.\n"
         "N is the number of spatial grid points and has no unit."),
