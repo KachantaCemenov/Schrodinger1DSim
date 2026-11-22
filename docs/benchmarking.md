@@ -17,8 +17,7 @@ The final time must be an integer multiple of the time step so that $T_{\text{fi
 When an analytical reference solution is available, the program compares each numerical wavefunction with that reference at a same $t$. It calculates
 
 $$
-\left\|\Psi_{\mathrm{num}}-\Psi_{\mathrm{ref}}\right\|_2
-=
+\left\|\Psi_{\mathrm{num}}-\Psi_{\mathrm{ref}}\right\| =
 \sqrt{\Delta x\sum_j
 \left|\Psi_{\mathrm{num},j}-\Psi_{\mathrm{ref},j}\right|^2}.
 $$
@@ -39,17 +38,13 @@ For other wave and potential combinations, custom initial wavefunctions, or Diri
 The program calculates the discrete norm as
 
 $$
-\|\Psi(t)\|
-=
-\sqrt{\Delta x\sum_j |\Psi_j(t)|^2}.
+\|\Psi(t)\| = \sqrt{\Delta x\sum_j |\Psi_j(t)|^2}.
 $$
 
 The norm drift is the absolute change from the initial value:
 
 $$
-\Delta_{norm}(t)
-=
-\left|\|\Psi(t)\|-\|\Psi(0)\|\right|.
+\Delta_{norm}(t) = \left|\|\Psi(t)\|-\|\Psi(0)\|\right|.
 $$
 
 The maximum norm drift is the largest $\Delta_{norm}$ over all $t$. The initial wavefunction is normalized by this setup, so its initial norm is usually 1 or close to 1. The calculation for maximum norm drift uses the recorded initial norm instead of the number 1.
@@ -59,11 +54,9 @@ The maximum norm drift is the largest $\Delta_{norm}$ over all $t$. The initial 
 For each periodic benchmark state, SSF reports energy using the Fourier-space kinetic-energy diagnostic:
 
 $$
-\langle E\rangle
-=
+\langle E\rangle =
 \frac{\displaystyle\sum_q \frac{\hbar^2 k_q^2}{2m}|\widetilde{\Psi}_q|^2}
-     {\displaystyle\sum_q |\widetilde{\Psi}_q|^2}
-+
+     {\displaystyle\sum_q |\widetilde{\Psi}_q|^2} +
 \frac{\displaystyle\sum_j V_j|\Psi_j|^2}
      {\displaystyle\sum_j |\Psi_j|^2}.
 $$
@@ -71,15 +64,13 @@ $$
 While CN reports energy using its own Hamiltonian matrix:
 
 $$
-\langle E\rangle
-=
-\frac{\Psi^\dagger H_{CN} \Psi}{(\Psi^\dagger \Psi)}.
+\langle E\rangle = \frac{\Psi^\dagger H_{CN} \Psi}{(\Psi^\dagger \Psi)}.
 $$
 
 The energy drift is the absolute change from the initial reported energy,
 
 $$
-\Delta_E(t)=|\langle E(t)\rangle-\langle E(0)\rangle|,
+\Delta_E(t) = |\langle E(t)\rangle-\langle E(0)\rangle|,
 $$
 
 and the maximum energy drift is the largest value over all $t$.
@@ -110,16 +101,13 @@ This value is reported in radians and wrapped to the range $[-\pi,\pi]$. It desc
 The ordinary $L^2$ error compares the wavefunctions directly, including this global phase offset. Phase-aligned $L^2$ error is $L^2$ error calculated after removing the phase offset by:
 
 $$
-\Psi_{\mathrm{num,aligned}}
-=
-e^{-i\Delta\phi}\Psi_{\mathrm{num}}.
+\Psi_{\mathrm{num,aligned}} = e^{-i\Delta\phi}\Psi_{\mathrm{num}}.
 $$
 
 It then calculates
 
 $$
-\left\|\Psi_{\mathrm{num,aligned}}-\Psi_{\mathrm{ref}}\right\|_2
-=
+\left\|\Psi_{\mathrm{num,aligned}}-\Psi_{\mathrm{ref}}\right\| =
 \sqrt{\Delta x\sum_j
 \left|\Psi_{\mathrm{num,aligned},j}-\Psi_{\mathrm{ref},j}\right|^2}.
 $$
