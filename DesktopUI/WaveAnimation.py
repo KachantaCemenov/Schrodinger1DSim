@@ -4,6 +4,9 @@ from tkinter import ttk
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.collections import LineCollection
+from matplotlib.colors import Normalize
+from matplotlib import colormaps
 
 
 class WaveAnimation(ttk.Frame):
@@ -22,6 +25,9 @@ class WaveAnimation(ttk.Frame):
         self.densities = None
         self.momentum_grid = None
         self.momentum_densities = None  
+
+        self.phases = None
+        self.phase_segments = None
 
         controls = ttk.Frame(self)
         controls.pack(fill="x")
@@ -42,17 +48,29 @@ class WaveAnimation(ttk.Frame):
         ttk.Label(controls,textvariable=self.time_text).pack(side="left", padx=10)
 
         #Two subplots for position and momentum
-        self.figure = Figure(figsize=(8, 5.5), dpi=100)
-        self.axes = self.figure.add_subplot(211)
-        self.momentum_axes = self.figure.add_subplot(212)
+        self.figure = Figure(figsize = (8, 6.5), dpi = 100)
+        layout = self.figure.add_gridspec(3, 1, height_ratios = (1, 0.06, 1))
+        self.axes = self.figure.add_subplot(layout[0])
+        self.phase_colorbar_axes = self.figure.add_subplot(layout[1])
+        self.momentum_axes = self.figure.add_subplot(layout[2])
         #self.axes = self.figure.add_subplot(111)
         self.axes.set_xlabel("Position x")
         self.axes.set_ylabel(r"$|\psi(x,t)|^2$")
 
-        self.line, = self.axes.plot([], [], color="tab:blue", linewidth = 2, animated = True)
+        #self.line, = self.axes.plot([], [], color="tab:blue", linewidth = 2, animated = True)
+        #Coloring the phases, gray means negligible densities so hidden phase
+        phase_colormap = colormaps["twilight"].copy()
+        phase_colormap.set_bad((0.55, 0.55, 0.55, 0.5))
 
-        self.axes.set_ylabel(r"$|\psi(x,t)|^2$", color = "tab:blue")
-        self.axes.tick_params(axis = "y", labelcolor = "tab:blue")
+        self.phase_line = LineCollection([], cmap = phase_colormap,
+                                        norm = Normalize(vmin = -np.pi, vmax = np.pi), linewidths = 2, animated = True)
+        self.axes.add_collection(self.phase_line)
+
+        self.phase_colorbar = self.figure.colorbar(self.phase_line, cax = self.phase_colorbar_axes, orientation = "horizontal")
+        self.phase_colorbar.set_label("Phase (rad)")
+        self.phase_colorbar.set_ticks([-np.pi, 0, np.pi])
+        self.phase_colorbar.set_ticklabels(["−π", "0", "π"])
+
         #Potential
         self.potential_axes = self.axes.twinx()
         self.potential_axes.set_ylabel("Potential energy V(x)", color = "tab:orange")
@@ -74,7 +92,7 @@ class WaveAnimation(ttk.Frame):
 
         self.wall_artists = []
 
-        self.figure.tight_layout()
+        self.figure.tight_layout(pad = 1.2, h_pad = 1.8)
 
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
@@ -85,7 +103,7 @@ class WaveAnimation(ttk.Frame):
 
         self.bind("<Destroy>", self.OnDestroy, add="+")
 
-    def LoadData(self, x, times, densities, potential_values, momentum_grid, momentum_densities):
+    def LoadData(self, x, times, densities, potential_values, momentum_grid, momentum_densities, phases):
         #Load the array of psi values
         x = np.asarray(x, dtype=float)
         times = np.asarray(times, dtype=float)
@@ -93,60 +111,62 @@ class WaveAnimation(ttk.Frame):
         potential_values = np.asarray(potential_values, dtype=float)
         momentum_grid = np.asarray(momentum_grid, dtype=float)
         momentum_densities = np.asarray(momentum_densities, dtype=float)
+        phases = np.asarray(phases, dtype = np.float32)
 
         if x.ndim != 1 or x.size < 2:
             raise ValueError("x must contain at least two grid points.")
-
         if times.ndim != 1 or times.size == 0:
             raise ValueError("At least one animation time is required.")
-
         if densities.shape != (times.size, x.size):
             raise ValueError("Probability density dimensions are invalid.")
-
         if not (np.all(np.isfinite(x)) and np.all(np.isfinite(times)) and np.all(np.isfinite(densities))):
             raise ValueError("Animation data must be finite.")
-
         if np.any(np.diff(x) <= 0):
             raise ValueError("Grid positions must increase.")
-
         if np.any(np.diff(times) <= 0):
             raise ValueError("Animation times must increase.")
-
         if np.any(densities < 0):
             raise ValueError("Probability densities cannot be negative.")
         #Check the potential
         if potential_values.shape != x.shape:
             raise ValueError("Potential must have one value per spatial grid point.")
-
         if np.any(np.isnan(potential_values)) or np.any(np.isneginf(potential_values)): #posinf is allowed
             raise ValueError("Potential contains invalid values.")
-
         if not np.any(np.isfinite(potential_values)):
             raise ValueError("Potential must contain a finite region.")
         #Check the momentum
         if momentum_grid.ndim != 1 or momentum_grid.size < 2:
             raise ValueError("Momentum grid must contain at least two points.")
-
         if momentum_densities.shape != (times.size, momentum_grid.size):
             raise ValueError("Momentum density dimensions are invalid.")
-
         if not (np.all(np.isfinite(momentum_grid)) and np.all(np.isfinite(momentum_densities))):
             raise ValueError("Momentum animation data must be finite.")
-
         if np.any(np.diff(momentum_grid) <= 0):
             raise ValueError("Momentum grid must be strictly increasing.")
-
         if np.any(momentum_densities < 0):
             raise ValueError("Momentum densities cannot be negative.")
+        #Check phase
+        if phases.shape != densities.shape:
+            raise ValueError("Phase and probability density dimensions do not match.")
+        if not np.all(np.isfinite(phases)):
+            raise ValueError("Animation phases must be finite.")
 
         self.Pause()
 
         self.x = x
         self.times = times
         self.densities = densities
+        self.phases = phases
         self.momentum_grid = momentum_grid
         self.momentum_densities = momentum_densities
-        self.line.set_data(self.x, self.densities[0])
+        #Cloring
+        midpoint_x = 0.5 * (x[:-1] + x[1:])
+        self.phase_segments = np.empty((len(x), 3, 2), dtype = float)
+        self.phase_segments[:, 0, 0] = np.r_[x[0], midpoint_x]
+        self.phase_segments[:, 1, 0] = x
+        self.phase_segments[:, 2, 0] = np.r_[midpoint_x, x[-1]]
+        self.UpdatePhaseLine(0)
+
         self.momentum_line.set_data(self.momentum_grid, self.momentum_densities[0])
         self.background = None
 
@@ -160,7 +180,7 @@ class WaveAnimation(ttk.Frame):
         momentum_peak = float(self.momentum_densities.max())
         self.momentum_axes.set_ylim(0, momentum_peak * 1.1 if momentum_peak > 0 else 1)
         self.UpdatePotential(x, potential_values)
-        self.figure.tight_layout()
+        self.figure.tight_layout(pad = 1.2, h_pad = 1.8)
         self.background = None
 
         self.momentum_fit_button.configure(state="normal")
@@ -177,7 +197,7 @@ class WaveAnimation(ttk.Frame):
         self.frame_index = max(0, min(int(index), len(self.times) - 1))
 
         #Only vertical values change
-        self.line.set_ydata(self.densities[self.frame_index])
+        self.UpdatePhaseLine(self.frame_index)
         self.momentum_line.set_ydata(self.momentum_densities[self.frame_index])
 
         self.time_text.set(f"t = {self.times[self.frame_index]:.6g}")
@@ -228,7 +248,7 @@ class WaveAnimation(ttk.Frame):
         self.background = self.canvas.copy_from_bbox(self.figure.bbox)
 
         if self.densities is not None:
-            self.axes.draw_artist(self.line)
+            self.axes.draw_artist(self.phase_line)
             self.momentum_axes.draw_artist(self.momentum_line)
             self.canvas.blit(self.figure.bbox)
 
@@ -254,7 +274,7 @@ class WaveAnimation(ttk.Frame):
             return
 
         self.canvas.restore_region(self.background)
-        self.axes.draw_artist(self.line)
+        self.axes.draw_artist(self.phase_line)
         self.momentum_axes.draw_artist(self.momentum_line)
         self.canvas.blit(self.figure.bbox)
 
@@ -353,3 +373,22 @@ class WaveAnimation(ttk.Frame):
         # Changing axes invalidates the saved blitting background.
         self.background = None
         self.canvas.draw_idle()
+
+
+    def UpdatePhaseLine(self, index):
+        density = self.densities[index]
+        midpoint_y = 0.5 * (density[:-1] + density[1:])
+
+        self.phase_segments[:, 0, 1] = np.r_[density[0], midpoint_y]
+        self.phase_segments[:, 1, 1] = density
+        self.phase_segments[:, 2, 1] = np.r_[midpoint_y, density[-1]]
+
+        self.phase_line.set_segments(self.phase_segments)
+
+        #Relative threshold also works when density has physical units
+        peak = float(density.max())
+        hidden = density <= 1e-8 * peak #No need to color the points with too small prob density
+
+        displayed_phase = np.ma.masked_where(hidden, self.phases[index])
+
+        self.phase_line.set_array(displayed_phase)

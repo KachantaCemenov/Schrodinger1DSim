@@ -1934,10 +1934,11 @@ class MainWindow(tk.Tk):
 
         try:
             (res, x, times, densities, potential_values, 
-             momentum_grid, momentum_densities) = future.result()
+             momentum_grid, momentum_densities, phases) = future.result()
 
             self.wave_animation.LoadData(x, times, densities, 
-                                         potential_values, momentum_grid, momentum_densities,)
+                                         potential_values, momentum_grid, momentum_densities,
+                                         phases)
             self.result_table.LoadDataFrame(res)
 
             self.current_results = res

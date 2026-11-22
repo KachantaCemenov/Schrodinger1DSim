@@ -130,6 +130,8 @@ class BenchmarkResults(ttk.Frame):
         "Momentum <p>": ("CN_expected_p", "SSF_expected_p"),
         "Energy <E>": ("CN_expected_energy", "SSF_expected_energy"),
         "L2 error": ("CN_L2Error", "SSF_L2Error"),
+        "Global phase difference (rad)": ("CN_phase_difference", "SSF_phase_difference"),
+        "Phase-aligned L2 error": ("CN_phase_aligned_L2Error", "SSF_phase_aligned_L2Error"),
     }
 
     def __init__(self, parent):
@@ -523,12 +525,13 @@ class BenchmarkResults(ttk.Frame):
             return
 
         #If L2 error is selected but not available
-        if quantity == "L2 error" and self.data[list(columns)].isna().all().all():
+        reference_quantities = ("L2 error", "Global phase difference (rad)", "Phase-aligned L2 error")
+        if (quantity in reference_quantities and self.data[list(columns)].isna().all().all()):
             self.axes.clear()
             self.axes.set_title(f"{problem} — N={n}, dt={dt}")
-            self.axes.text(0.5,0.5,"L2 error is unavailable.\n"
-                    "This result contains no analytical-reference error values.", ha="center", va="center",
-                    transform=self.axes.transAxes)
+            self.axes.text(0.5, 0.5,
+                            "This diagnostic is unavailable.\nNo reference was available, or the wave overlap was too small for phase alignment.",
+                            ha = "center", va = "center", transform = self.axes.transAxes)
             self.axes.set_axis_off()
             self.canvas.draw_idle()
             self.RefreshTable()
@@ -536,13 +539,22 @@ class BenchmarkResults(ttk.Frame):
         
         self.axes.clear()
         self.axes.set_axis_on()
-        self.axes.plot(self.data["time"],
+        """self.axes.plot(self.data["time"],
                         self.data[columns[0]],
                         label = "Crank–Nicolson")
         self.axes.plot(self.data["time"],
                         self.data[columns[1]],
                         label = "SSF",
-                        linestyle="--")
+                        linestyle="--")"""
+        phase_plot = quantity == "Global phase difference (rad)"
+        for column, label, style in ((columns[0], "Crank–Nicolson", "-"), (columns[1], "SSF", "--")):
+            self.axes.plot(self.data["time"],
+                        self.data[column],
+                        label = label,
+                        linestyle = "None" if phase_plot else style,
+                        marker = "." if phase_plot else None)
+        if phase_plot:
+            self.axes.set_ylim(-math.pi, math.pi)
         self.axes.set_xlabel("Time")
         self.axes.set_ylabel(quantity)
         self.axes.set_title(f"{problem} — N={n}, dt={dt}")
