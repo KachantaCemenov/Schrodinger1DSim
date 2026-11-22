@@ -1,7 +1,7 @@
 # Schrodinger1DSim (README.md unfinished)
 
 <!-- CTRL + E then CTRL + W to wrap words -->
-This is an introductory document, for more details, refered from [index.md](docs/index.md).
+This is an introductory document, for more details, refer from [index.md](docs/index.md).
 
 This application propagates your one dimension wave function to the next time step by solving the time-dependent Schrodinger equation. 
 Shape of the results of the wave function at subsequent time step is joined into an animation after the calculation to demonstrate how this result change.
