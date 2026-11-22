@@ -121,6 +121,7 @@ Each time step therefore solves the linear system
 $$
 A\Psi^{n+1} = B\Psi^n.
 $$
+
 which because H is tridiagonal, is also a tridiagonal matrix equation.
 
 The Crank–Nicolson time discretization is second-order accurate in $\Delta t$ for a time-independent Hamiltonian and sufficiently smooth solution. Together with the spatial difference approximation, the nominal global discretization error is $O((\Delta t)^2+(\Delta x)^2)$ under the smoothness assumption. Discontinuities in the potential or solution can affect observed convergence rates.
