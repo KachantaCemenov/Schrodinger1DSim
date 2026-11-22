@@ -80,7 +80,7 @@ $$
 \frac{\hbar^2}{m(\Delta x)^2}+V_0 & -\frac{\hbar^2}{2m(\Delta x)^2}   & 0   & \cdots & 0 \\
 -\frac{\hbar^2}{2m(\Delta x)^2}   & \frac{\hbar^2}{m(\Delta x)^2}+V_1 & -\frac{\hbar^2}{2m(\Delta x)^2}   & \ddots & \vdots \\
 0   & -\frac{\hbar^2}{2m(\Delta x)^2}   & \frac{\hbar^2}{m(\Delta x)^2}+V_2 & \ddots & 0 \\
-\vdots & \ddots & \ddots & \ddots & c \\
+\vdots & \ddots & \ddots & \ddots & -\frac{\hbar^2}{2m(\Delta x)^2} \\
 0   & \cdots & 0 & -\frac{\hbar^2}{2m(\Delta x)^2} & \frac{\hbar^2}{m(\Delta x)^2}+V_{N-1}
 \end{bmatrix}.
 $$ 
@@ -95,7 +95,7 @@ The grid is constructed in [`grid.py`](../../grid.py):
 
 ## 3. Crank–Nicolson time step
 
-Now that we have found a way to approximate the Hamiltonian, let's go back to the Schrodinger equation. Let $\Psi^n$ denote the vector at time $t_n=n\Delta t$, and let $\Psi^{n+1}$ be the vector one time step later. Crank–Nicolson method approximates the first order time derivative by taking the average of the Hamiltonian at the begining and end:
+Now that we have found a way to approximate the Hamiltonian, let's go back to the Schrodinger equation. Let $\Psi^n$ denote the vector at time $t_n=n\Delta t$, and let $\Psi^{n+1}$ be the vector one time step later. Crank–Nicolson method approximates the first order time derivative by averaging the change with time:
 
 $$
 i\hbar\frac{\Psi^{n+1}-\Psi^n}{\Delta t} = \frac{1}{2}H\left(\Psi^{n+1}+\Psi^n\right).
@@ -132,7 +132,7 @@ The Crank–Nicolson time discretization is second-order accurate in $\Delta t$ 
 For periodic boundaries, the finite-difference stencil wraps from the final grid point back to the first:
 
 $$
-\Psi(x=N)=\Psi(x=0).
+\Psi_{N-1}=\Psi_0.
 $$
 
 Thus, $H$ is cyclic tridiagonal. In addition to the usual tridiagonal entries, the implementation sets
@@ -148,7 +148,7 @@ Although $x_{\max}$ is not stored as a grid point, it is identified with $x_{\mi
 For zero-value (Dirichlet) boundaries, the endpoint values are fixed at zero:
 
 $$
-\Psi(x = 0, t) = \Psi(x = N-1, t) = 0 \quad\text{for every }t.
+\Psi_0 = \Psi_{N-1} = 0 \quad\text{for every }t.
 $$
 
 The solver removes the endpoint values from the wavefunction and solves only for the $N-2$ interior values. The resulting interior Hamiltonian is tridiagonal with no periodic corner entries. At each calculation step, the new full-size array is initialized to zero and the solved interior values are assigned to indices `1:-1`. This keeps both endpoints at zero without solving for them.
