@@ -85,7 +85,7 @@ $$
 \end{bmatrix}.
 $$ 
 
-and is a $(N - 2) \times (N - 2)$ tridiagonal matrix in Dirichlet boundary condition because it excludes the two endpoints. In periodic boundary condition it would look a bit different with a $-\frac{\hbar^2}{2m(\Delta x)^2}$ at position $(0, N-1)$ and $(N-1, 0)$ instead of zeroes, and is a $N \times N$ cyclic tridiagonal matrix. With $\Psi(x)$ being a $N \times 1$ matrix, ${H}\Psi(x)$ would produce a $N \times 1$.
+which is a $(N - 2) \times (N - 2)$ tridiagonal matrix in Dirichlet boundary condition because it excludes the two endpoints. In periodic boundary condition it would look a bit different with a $-\frac{\hbar^2}{2m(\Delta x)^2}$ at position $(0, N-1)$ and $(N-1, 0)$ instead of zeroes, and is a $N \times N$ cyclic tridiagonal matrix. With $\Psi(x)$ being a $N \times 1$ matrix, ${H}\Psi(x)$ would produce a $N \times 1$ matrix (or array as implemented in this program).
 
 
 The grid is constructed in [`grid.py`](../../grid.py):
