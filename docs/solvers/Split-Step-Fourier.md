@@ -112,7 +112,7 @@ $$
 k_q = 2\pi\,\text{fftfreq}(N,\Delta x).
 $$
 
-with fftfreq being the discrete Fourier transform of the spatial domain, implemented by numpy.fft.fftfreq.
+<!-- Need to say something about fftfreq here -->
 
 For each wave number $k_q$, it calculates the kinetic phase
 
