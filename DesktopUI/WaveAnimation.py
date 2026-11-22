@@ -71,10 +71,6 @@ class WaveAnimation(ttk.Frame):
         self.phase_colorbar.set_ticks([-np.pi, 0, np.pi])
         self.phase_colorbar.set_ticklabels(["−π", "0", "π"])
 
-
-
-        """self.axes.set_ylabel(r"$|\psi(x,t)|^2$", color = "tab:blue")
-        self.axes.tick_params(axis = "y", labelcolor = "tab:blue")"""
         #Potential
         self.potential_axes = self.axes.twinx()
         self.potential_axes.set_ylabel("Potential energy V(x)", color = "tab:orange")

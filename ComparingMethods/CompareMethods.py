@@ -137,8 +137,6 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
 
                 reference_errors = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
-                reference_errors = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
-
                 writer.writerow([step, time, 
                                 wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), CN_solver.Expectation_energy(wave_cn),
                                 wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
