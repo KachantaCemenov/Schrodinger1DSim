@@ -8,6 +8,9 @@ This page will be updated as more documents are written.
 
 - [Crank–Nicolson method](solvers/Crank-Nicolson.md) discusses the Crank-Nicolson propagation method.
 - [Split-Step Fourier method](solvers/Split-Step-Fourier.md) discusses the Slit-Step Fourier propagation method.
+
+## Benchmarking
+
 - [Benchmarking](benchmarking.md) discusses valuees used in benchmark comparison.
 
 Both pages connect the mathematical steps to the implementation in the `Solvers` folder. They also describe the limitations and accuracy of each method.
