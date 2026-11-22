@@ -268,6 +268,7 @@ def RunSimulation(config, stop_event = None):
     frame_lookup = set(frame_steps)
     densities = []
     momentum_densities = []
+    phases = []
     rows = []
 
     #Use the same spatial grid for every frame
@@ -314,6 +315,8 @@ def RunSimulation(config, stop_event = None):
             display_psi[active] = wave.psi
 
             densities.append(np.abs(display_psi) ** 2)
+            #Save the phase
+            phases.append(np.angle(display_psi).astype(np.float32))
             #Perform FFT in here only for the saved frames
             transformed = np.fft.fftshift(np.fft.fft(display_psi, norm = "ortho"))
             #Probability density per unit momentum.
@@ -331,7 +334,8 @@ def RunSimulation(config, stop_event = None):
 
     return (res, display_grid.x, np.array(frame_steps) * config.dt, 
             np.array(densities), display_potential.copy(), 
-            momentum_grid, np.array(momentum_densities))
+            momentum_grid, np.array(momentum_densities),
+            np.array(phases, dtype = np.float32))
 
 
 

@@ -48,12 +48,54 @@ def RunComparison(setting_folder : Path,
                                 CN_solver = CN_solver, SSF_solver = SSF_solver, setting_folder = setting_folder, steps=steps)
 
 
+
+def ReferenceDiagnostics(grid, numerical, reference):
+    #convert to np array
+    numerical = np.asarray(numerical, dtype = complex)
+    reference = np.asarray(reference, dtype = complex)
+
+    if numerical.shape != grid.x.shape or reference.shape != grid.x.shape:
+        raise ValueError("Reference and numerical wave dimensions do not match.")
+    if not np.all(np.isfinite(numerical)) or not np.all(np.isfinite(reference)):
+        raise ValueError("Reference diagnostics require finite wave values.")
+
+    raw_L2 = L2Error(grid, numerical, reference)
+
+    #Normalize for measuring overlap, preserve original amplitudes for L2
+    numerical_norm = float(np.linalg.norm(numerical))
+    reference_norm = float(np.linalg.norm(reference))
+
+    if not np.isfinite(numerical_norm) or not np.isfinite(reference_norm):
+        raise ValueError("Wave norms must be finite.")
+    if numerical_norm <= 0 or reference_norm <= 0:
+        return raw_L2, "N/A", "N/A"
+
+    overlap = np.vdot(reference / reference_norm, numerical / numerical_norm) # <psi|psi>
+
+    #if overlap too small ignore it
+    if abs(overlap) <= 1e-12:
+        return raw_L2, "N/A", "N/A"
+
+    phase_difference = float(np.angle(overlap))
+
+    aligned = numerical * np.exp(-1j * phase_difference) #remove the phase different
+    aligned_L2 = L2Error(grid, aligned, reference)       #then recalculate L2 error
+
+    return raw_L2, phase_difference, aligned_L2
+
+
 def CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time):
     if analytical is None:
-        return "N/A", "N/A" #When there is no analytical implemented
+        return ("N/A") * 6 #When there is no analytical implemented
 
-    exact_psi = analytical(time)
-    return (L2Error(grid, wave_cn.psi, exact_psi),L2Error(grid, wave_ssf.psi, exact_psi))
+    reference = analytical(time)
+
+    cn = ReferenceDiagnostics(grid, wave_cn.psi, reference)
+    ssf = ReferenceDiagnostics(grid, wave_ssf.psi, reference)
+
+    return (cn[0], ssf[0],
+            cn[1], ssf[1],
+            cn[2], ssf[2])
 
 def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                               wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
@@ -68,11 +110,16 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
 
     with open(metric_path, mode='w', newline='') as file:
             writer = csv.writer(file)
+
             writer.writerow(['Setting:', f'dt = {dt}', f'N = {N}'])
-            writer.writerow(["step", "time", "CN_norm", "CN_expected_x", "CN_expected_p", "CN_expected_energy", 
-                             "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy", "CN_L2Error", "SSF_L2Error"])
+            writer.writerow(["step", "time", 
+                             "CN_norm", "CN_expected_x", "CN_expected_p", "CN_expected_energy", 
+                             "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy", 
+                             "CN_L2Error", "SSF_L2Error",
+                            "CN_phase_difference", "SSF_phase_difference",
+                            "CN_phase_aligned_L2Error", "SSF_phase_aligned_L2Error"])
 
-
+            """ Move this initial writing block into the loop
             cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time=0)
 
             #Write initial state
@@ -82,23 +129,26 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                              wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
                              wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                              cn_L2, ssf_L2])
+            """
 
-            for step in range(steps):
-                CN_solver.Step(wave_cn)
-                SSF_solver.Step(wave_ssf)
+            for step in range(steps + 1):
 
-                time = (step + 1) * dt  #step go from 0 so +1
+                time = (step) * dt  #step go from 0 so +1
+
+                reference_errors = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
                 cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
-                writer.writerow([
-                    step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
-                    #wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
-                    CN_solver.Expectation_energy(wave_cn),
-                    wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
-                    wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
-                    cn_L2, ssf_L2
-                ])
+                writer.writerow([step, time, 
+                                wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), CN_solver.Expectation_energy(wave_cn),
+                                wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
+                                #cn_L2, ssf_L2, These are in reference_errors 
+                                *reference_errors
+                            ])
+
+                if step < steps:
+                    CN_solver.Step(wave_cn)
+                    SSF_solver.Step(wave_ssf)
 
 def RunSolvers_AndWriteRuntime(N, dt, T_final, 
                                wave_cn: WaveFunction, wave_ssf: WaveFunction, potential: Potential, 
