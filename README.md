@@ -1,10 +1,11 @@
 # Schrodinger1DSim (README.md unfinished)
 
 <!-- CTRL + E then CTRL + W to wrap words -->
+This is an introductory document, for more details, refered from [index.md](docs/index.md).
 
 This application propagates your one dimension wave function to the next time step by solving the time-dependent Schrodinger equation. 
 Shape of the results of the wave function at subsequent time step is joined into an animation after the calculation to demonstrate how this result change.
-Result of a wave function (more on this below) in the current iteration of this program is a 1D matrix. A Fourier transform of the spatial domain produced the second animation of the momentum space.
+Result of a wave function (more on this below) in the current iteration of this program is a 1D matrix. A Fourier transform of the spatial domain produced the second animation of the momentum space
 
 ## Discretization
 
@@ -62,6 +63,8 @@ In periodic problems, CN reports its energy using different calculation from SSF
 
 The $\Psi(x)$ array is saved at most 400 times (due to technical limits) accross all time steps into a list of frames which is showed as an animation after the calculation. A FFT is applied to the spatial domain to produce the momentum distribution graph. 
 
+The wave-function animation also colors the position-space curve by the local phase $\arg(\Psi(x,t))$. The color scale runs from $-\pi$ to $\pi$ radians. Phase in regions where the probability density is too close to zero (less than $10^{-8}$ of the maximum density in this program) are colored gray.
+
 ### Benchmark and Read Benchmark
 
 In Benchmark tab you can specify one or many problems to be run over a number of different $N$ and $dt$ values with both SSF and CN. In this program one set of such problems is called a "run".   
@@ -71,7 +74,7 @@ Since the point is comparison, currently some configurations are unallowed for B
 
 In Read Benchmark tab, you can observe graphs based on results from one of your Benchmark runs. You can inspect an error value in each problem at different configuration specified in the run, as well as observe the convergence of the errors. The convergence plots are produced for each problem by holding $N$ (or $dt$) fixed and observe how an error value change with $dt$ (or $N$).
 
-In problems without an implemented analytical solutions, functions involve $L^2$ error are unavailable.
+In problems without an implemented analytical solutions, functions involve $L^2$ error are unavailable. When an analytical reference is available, Read Benchmark also shows the global phase difference and phase-aligned $L^2$ error. These values help distinguish a global phase offset from differences in the wavefunction's shape. See [benchmarking.md](docs/benchmarking.md) for their definitions.
 
 ### Recommendation
 

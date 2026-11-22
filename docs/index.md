@@ -6,7 +6,8 @@ This page will be updated as more documents are written.
 
 ## The solvers
 
-- [Crank–Nicolson method](solvers/Crank-Nicolson.md) derives the finite-difference Hamiltonian and the CN time update. It also explains how the program handles periodic and Dirichlet boundaries.
-- [Split-Step Fourier method](solvers/Split-Step-Fourier.md) derives the symmetric split between the kinetic and potential operators and explains how the program applies each part in Fourier or position space.
+- [Crank–Nicolson method](solvers/Crank-Nicolson.md) discusses the Crank-Nicolson propagation method.
+- [Split-Step Fourier method](solvers/Split-Step-Fourier.md) discusses the Slit-Step Fourier propagation method.
+- [Benchmarking](benchmarking.md) discusses valuees used in benchmark comparison.
 
 Both pages connect the mathematical steps to the implementation in the `Solvers` folder. They also describe the limitations and accuracy of each method.
