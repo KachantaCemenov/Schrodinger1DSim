@@ -1,0 +1,189 @@
+{
+  "Test_1": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -50.0,
+    "x_max": 50.0,
+    "N": 200,
+    "dt": 0.01,
+    "T_final": 50.0,
+    "solver": "SSF",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -5.0,
+      "sigma": 3.0,
+      "k0": 2.0
+    },
+    "potential_type": "Free Particle",
+    "potential_parameters": {},
+    "wave_expression": null
+  },
+  "Test_2": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -50.0,
+    "x_max": 50.0,
+    "N": 2000,
+    "dt": 0.01,
+    "T_final": 50.0,
+    "solver": "SSF",
+    "wave_mode": "Expression",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {},
+    "potential_type": "Free Particle",
+    "potential_parameters": {},
+    "wave_expression": "exp(-(x+2)**2/(4*1**2))"
+  },
+  "ISW_Test_1": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -10.0,
+    "x_max": 10.0,
+    "N": 401,
+    "dt": 0.1,
+    "T_final": 50.0,
+    "solver": "Crank-Nicolson",
+    "wave_mode": "Expression",
+    "wave_type": "Harmonic Oscillator Eigenstate",
+    "wave_parameters": {},
+    "potential_type": "Infinite Square Well",
+    "potential_parameters": {
+      "x_left": -2.0,
+      "x_right": 3.0
+    },
+    "wave_expression": "sin(pi*(x+2)/5)"
+  },
+  "ISW_Test_2": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -20.0,
+    "x_max": 20.0,
+    "N": 401,
+    "dt": 0.001,
+    "T_final": 10.0,
+    "solver": "Crank-Nicolson",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -5.0,
+      "sigma": 2.0,
+      "k0": 20.0
+    },
+    "potential_type": "Infinite Square Well",
+    "potential_parameters": {
+      "x_left": -18.0,
+      "x_right": 18.0
+    },
+    "wave_expression": null
+  },
+  "G_GO_Test_1": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -20.0,
+    "x_max": 20.0,
+    "N": 401,
+    "dt": 0.001,
+    "T_final": 10.0,
+    "solver": "SSF",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": 0.0,
+      "sigma": 2.0,
+      "k0": 20.0
+    },
+    "potential_type": "Harmonic Oscillator",
+    "potential_parameters": {
+      "omega": 3.0
+    },
+    "wave_expression": null
+  },
+  "Electron_G_HO_Test_1": {
+    "mass": 9.1093837139e-31,
+    "hbar": 1.0545718176461565e-34,
+    "x_min": -5e-09,
+    "x_max": 5e-09,
+    "N": 16000,
+    "dt": 8e-18,
+    "T_final": 9.6e-14,
+    "solver": "SSF",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -2e-09,
+      "sigma": 2.4059056087457926e-10,
+      "k0": 2000000000.0
+    },
+    "potential_type": "Harmonic Oscillator",
+    "potential_parameters": {
+      "omega": 1000000000000000.0
+    },
+    "wave_expression": null
+  },
+  "Electron_G_ISW_Test_1": {
+    "mass": 9.1093837139e-31,
+    "hbar": 1.0545718176461565e-34,
+    "x_min": -5e-09,
+    "x_max": 5e-09,
+    "N": 8001,
+    "dt": 4e-17,
+    "T_final": 9.6e-14,
+    "solver": "Crank-Nicolson",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -2e-09,
+      "sigma": 2.4059056087457926e-10,
+      "k0": 2000000000.0
+    },
+    "potential_type": "Infinite Square Well",
+    "potential_parameters": {
+      "x_left": -4e-09,
+      "x_right": 4e-09
+    },
+    "wave_expression": null
+  },
+  "Electron_G_HO_Test_2": {
+    "mass": 9.1093837139e-31,
+    "hbar": 1.0545718176461565e-34,
+    "x_min": -5e-09,
+    "x_max": 5e-09,
+    "N": 1024,
+    "dt": 1e-17,
+    "T_final": 1.26e-14,
+    "solver": "SSF",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -1e-09,
+      "sigma": 2.405908e-10,
+      "k0": 0.0
+    },
+    "potential_type": "Harmonic Oscillator",
+    "potential_parameters": {
+      "omega": 1000000000000000.0
+    },
+    "wave_expression": null
+  },
+  "A1": {
+    "mass": 1.0,
+    "hbar": 1.0,
+    "x_min": -5.0,
+    "x_max": 5.0,
+    "N": 10,
+    "dt": 0.1,
+    "T_final": 10.0,
+    "solver": "SSF",
+    "wave_mode": "Preset",
+    "wave_type": "Gaussian Packet",
+    "wave_parameters": {
+      "x0": -1.0,
+      "sigma": 1.0,
+      "k0": 1.0
+    },
+    "potential_type": "Free Particle",
+    "potential_parameters": {},
+    "wave_expression": null
+  }
+}

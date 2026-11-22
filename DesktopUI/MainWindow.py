@@ -17,7 +17,8 @@ from WaveAnimation import WaveAnimation
 from concurrent.futures import ThreadPoolExecutor
 from Simulation import SimulationConfig, RunSimulation, MAX_GRID_POINTS, MAX_STEPS
 from ConfigStore import (ReadConfigurations, SaveConfiguration, LoadConfiguration, 
-                    CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,)
+                    CONFIG_FILE,ReadBenchmarkConfigurations,SaveBenchmarkConfiguration,BENCHMARK_CONFIG_FILE,
+                    InstallDefaultConfigurations)
 from Benchmark import (BuildBenchmarkProblem, RunBenchmarkConfiguration, SaveBenchmarkResults, 
                     HasBenchmarkReference, ResumeBenchmarkConfiguration,)
 from BenchmarkResults import BenchmarkResults, ReadBenchmarkManifest
@@ -39,6 +40,13 @@ class MainWindow(tk.Tk):
             self.recovery_lock = AcquireRecoveryLock()
         except RuntimeError as error:
             messagebox.showerror("Simulator already open", str(error), parent=self)
+            self.destroy()
+            raise SystemExit(1)
+
+        try:
+            InstallDefaultConfigurations()
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Cannot initialize configurations", str(error), parent = self)
             self.destroy()
             raise SystemExit(1)
 

@@ -10,6 +10,29 @@ APP_DATA_DIR = Path(os.environ["LOCALAPPDATA"]) / "Schrodinger1DSim"
 CONFIG_FILE = APP_DATA_DIR / "configurations.json"
 BENCHMARK_CONFIG_FILE = CONFIG_FILE.with_name("benchmark_configurations.json")
 
+DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent / "DefaultConfigurations"
+
+#Copy configs from DEFAULT_CONFIG_DIR to destination in (CONFIG_FILE, BENCHMARK_CONFIG_FILE)
+def InstallDefaultConfigurations():
+    APP_DATA_DIR.mkdir(parents = True, exist_ok = True)
+
+    for destination in (CONFIG_FILE, BENCHMARK_CONFIG_FILE):
+        #Dont touch configurations already belonging to the user
+        if destination.exists():
+            continue
+
+        source = DEFAULT_CONFIG_DIR / destination.name
+
+        with source.open("r", encoding = "utf-8-sig") as file:
+            configs = json.load(file)
+
+        if not isinstance(configs, dict):
+            raise ValueError(f"Default configurations must be a dictionary: {source}")
+
+        contents = json.dumps(configs, indent = 2, allow_nan = False)
+        temporary_path = destination.with_suffix(".tmp")
+        temporary_path.write_text(contents, encoding = "utf-8")
+        temporary_path.replace(destination)
 
 def ReadConfigurations():
     if not CONFIG_FILE.exists():
