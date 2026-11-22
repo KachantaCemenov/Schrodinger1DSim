@@ -73,17 +73,12 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
                              "SSF_norm", "SSF_expected_x", "SSF_expected_p", "SSF_expected_energy", "CN_L2Error", "SSF_L2Error"])
 
 
-            """
-            #Analytical psi at t = 0
-            exact_psi = analytical(0)
-            cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
-            ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
-            """
             cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time=0)
 
             #Write initial state
             writer.writerow(["0", "0", wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
-                             wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                             #wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                             CN_solver.Expectation_energy(wave_cn),
                              wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
                              wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                              cn_L2, ssf_L2])
@@ -94,17 +89,12 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
 
                 time = (step + 1) * dt  #step go from 0 so +1
 
-                """
-                #Calculate L^2 errors for both CN and SSF
-                exact_psi = analytical(time)
-                cn_L2 = L2Error(grid, wave_cn.psi, exact_psi)
-                ssf_L2 = L2Error(grid,wave_ssf.psi, exact_psi)
-                """
                 cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
                 writer.writerow([
                     step + 1, time, wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), 
-                    wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                    #wave_cn.Expectation_energy(potential, mass = mass, hbar = hbar),
+                    CN_solver.Expectation_energy(wave_cn),
                     wave_ssf.Norm(), wave_ssf.Expectation_x(), wave_ssf.Expectation_p(hbar = hbar), 
                     wave_ssf.Expectation_energy(potential, mass = mass, hbar = hbar),
                     cn_L2, ssf_L2
