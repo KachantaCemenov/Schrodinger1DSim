@@ -112,7 +112,7 @@ $$
 k_q = 2\pi\,\text{fftfreq}(N,\Delta x).
 $$
 
-<!-- Need to say something about fftfreq here -->
+with numpy.fft.fftfreq getting the frequencies associated with the bins of Fast Fourier Transform (FFT) using the grid spacing. The factor $2\pi$ converts the frenquencies to angular wave numbers.
 
 For each wave number $k_q$, it calculates the kinetic phase
 
@@ -172,7 +172,7 @@ $$
 
 The Fourier transform and inverse transform also preserve the discrete norm when used as a pair. Thus the SSF update is expected to preserve the discrete norm, with perhaps small deviations caused by floating-points round up.
 
-Norm preservation does not mean the method has no error. The potential and kinetic operators do not commute in general, so the split update does not exactly equal the exponential of the full Hamiltonian. The method has second-order temporal accuracy from the symmetric splitting, but a large $\Delta t$ can still produce phase and splitting errors.
+Since the potential and kinetic operators do not commute in general, so the split update does not exactly equal the exponential of the full Hamiltonian. The method has second-order temporal accuracy from the symmetric splitting, but a large $\Delta t$ can still produce phase and splitting errors.
 
 The kinetic operator here is Fourier spectral: it uses the Fourier wave numbers and the energy $\frac{\hbar^2 k^2}{(2m)}$. This differs from the finite-difference kinetic operator used by CN. As a result, a direct CN-versus-SSF comparison can reflect both time-propagation error and spatial kinetic-energy discretization differences.
 

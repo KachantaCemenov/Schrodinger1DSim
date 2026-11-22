@@ -56,7 +56,7 @@ The maximum norm drift is the largest $\Delta_{norm}$ over all $t$. The initial 
 
 ### Energy drift
 
-For each periodic benchmark state, both solvers report energy using the same Fourier-space kinetic-energy diagnostic:
+For each periodic benchmark state, SSF reports energy using the Fourier-space kinetic-energy diagnostic:
 
 $$
 \langle E\rangle
@@ -68,6 +68,14 @@ $$
      {\displaystyle\sum_j |\Psi_j|^2}.
 $$
 
+While CN reports energy using its own Hamiltonian matrix:
+
+$$
+\langle E\rangle
+=
+\frac{\Psi^\dagger H_{CN} \Psi}{(\Psi^\dagger \Psi)}.
+$$
+
 The energy drift is the absolute change from the initial reported energy,
 
 $$
@@ -76,7 +84,7 @@ $$
 
 and the maximum energy drift is the largest value over all $t$.
 
-This is a shared diagnostic for comparing the methods, but it is not exactly the energy associated with CN's periodic finite-difference Hamiltonian. CN utilize a different form for its discrete Hamiltonian, so the Fourier-based diagnostic method can potentially drift during a CN run. SSF uses the Fourier-space kinetic operator, but its split update does not generally conserve the full energy exactly. A measured energy drift should therefore be interpreted as this reported phenomenon, not yet as proof that either solver has failed.
+In an ealier version of this program (v0.1.0-beta) there was a CN energy diagnostic bug which has now been fixed. The program does not support marking or recalculating the CN energy values in the earlier bugged version.
 
 ## 3. How to read convergence results
 

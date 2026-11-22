@@ -85,7 +85,7 @@ $$
 \end{bmatrix}.
 $$ 
 
-which is an $N \times N$ tridiagonal matrix. With $\Psi(x)$ being a $N \times 1$ matrix, ${H}\Psi(x)$ would produce a $N \times 1$.
+and is a $(N - 2) \times (N - 2)$ tridiagonal matrix in Dirichlet boundary condition because it excludes the two endpoints. In periodic boundary condition it would look a bit different with a $-\frac{\hbar^2}{2m(\Delta x)^2}$ at position $(0, N-1)$ and $(N-1, 0)$ instead of zeroes, and is a $N \times N$ cyclic tridiagonal matrix. With $\Psi(x)$ being a $N \times 1$ matrix, ${H}\Psi(x)$ would produce a $N \times 1$.
 
 
 The grid is constructed in [`grid.py`](../../grid.py):
@@ -132,7 +132,7 @@ The Crank–Nicolson time discretization is second-order accurate in $\Delta t$ 
 For periodic boundaries, the finite-difference stencil wraps from the final grid point back to the first:
 
 $$
-\Psi_{N-1}=\Psi_0.
+\Psi_N=\Psi_0.
 $$
 
 Thus, $H$ is cyclic tridiagonal. In addition to the usual tridiagonal entries, the implementation sets
@@ -177,7 +177,7 @@ $$
 
 Because $A$ and $B$ are functions of the same Hermitian matrix, this update is unitary. Consequently, it preserves the discrete norm (up to an extend in this numerical solution). CN is stable for this linear Schrödinger evolution, but that does not imply accuracy: large $\Delta t$ can still produce substantial phase error. Spatial accuracy is likewise limited by $\Delta x$.
 
-In exact arithmetic, the discrete energy associated with $H$ is also conserved because the update commutes with $H$. There is a diagnostic mismatch in the current application: for simulations with periodic bounday condition, the reported energy calculates kinetic energy using Fourier-space $\frac{\hbar^2 k^2}{(2m)}$, while CN advances the state using a finite-difference kinetic Hamiltonian. These are not identical discrete kinetic operators, so the reported CN energy drift need not be zero even when the CN update preserves the energy associated with its own matrix $H$. For Dirichlet simulations, the energy diagnostic uses a finite-difference kinetic expression aligned with the CN discretization.
+Theoretically, the discrete energy associated with $H$ is also conserved because the update commutes with $H$. Energy equations used to report the energy of CN problems were either made to match the discrete Hamiltonian or to use the Hamiltonian itself. For Dirichlet problems, `Simulation.CalculateDirichletObservables` uses kinetic operators built from finite difference methods aligning with that of CN's Hamiltonian. For periodic problems, `solver.Expectation_energy(wave)` compute $\Psi^\dagger H_{CN} \Psi / (\Psi^\dagger \Psi)$ using the CN's Hamiltonian itself.
 
 The code does not renormalize the wavefunction after each CN step, because that would defeat the purpose of measuring the norm deviation.
 

@@ -32,7 +32,6 @@ Or one can argue that if one slice $dx$ and $dt$ so thin over spatial and tempor
 The former is the Crank-Nicolson (CN) method, and the latter is Split-Step Fourier (SSF) method. Each of these methods are interesting in its own rights, and wanting to compare them was the motivation behind which I built this program. 
 
 So far, I have observed that their performance depends a lot on details of the problem and configurations. Although SSF was seen to be faster and more accurate in many configurations, CN was more accurate especially in some problems with very large $N$ and $\frac{T}{dt}$. Details on these solvers and my observations will be added the "docs" folder.
-<!-- TODO THAT DOCS FOLDER -->
 
 Because Fast Discrete Fourier Transform requires a periodic boundary condition, the current implementation of SSF does not support certain potential configurations such as the infinite square well. Periodic boundary condition means that the value of $\Psi(x, t)$ at the end of spatial domain is warped around to the start of the domain: $\Psi(x = x_{max}, t) = \Psi(x = x_{min}, t)$. In the code, the two endpoints are treated as one, the grid stores $N$ points from $x_{min}$ to $x_{max} - dx$.
 
@@ -51,13 +50,15 @@ This tab contains the functions to propagate one wave function in a potential co
 - Expected energy, $\langle E \rangle$
 
 Currently the supported wave types are Gaussian wave packet, Harmonic oscillator, and Plane wave. Currently supported potential types are Free (no potential), Infinite Square Well, Barrier, Harmonic. 
-The program also supports typing in your own wave function. The rules for typing in your own mathematical expression is in "docs" folder and in "Help" inside the program. 
+The program also supports typing in your own wave function. The rules for typing in your own mathematical expression is in "docs" folder and in "Help" inside the program (to be implemented). 
 
 Current supported boundary conditions are:
 - Periodic: N grid points with $dx = \frac{x_{max} - x_{min}}{N}$. Value of the $\Psi$ at the end boundary warps to the start: $\Psi(x = x_{max}, t) = \Psi(x = x_{min}, t)$
 - Zero-value boundaries (Dirichlet) / Non-periodic boundaries: N grid points with $dx = \frac{x_{max} - x_{min}}{N - 1}$. Value of the $\Psi$ at the both boundaries are forced to be zero.
 
 Because the current implementation of FFT requires periodic boundary condition, SSF cannot run Infinite Square Well. CN can run all of potential configurations in either boundary conditions except infinite square well - that requires Dirichlet.
+
+In periodic problems, CN reports its energy using different calculation from SSF. CN calculates its energy with its own Hamiltonian matrix, while SSF uses the Fourier-space kinetic operator. Refer to section "Energy drift" in [benchmarking.md](docs/benchmarking.md) for more details.
 
 The $\Psi(x)$ array is saved at most 400 times (due to technical limits) accross all time steps into a list of frames which is showed as an animation after the calculation. A FFT is applied to the spatial domain to produce the momentum distribution graph. 
 
@@ -78,7 +79,7 @@ The Recommendation tab is for finding the faster solver for a certain requiremen
 
 In this tab you specify your problem in the Benchmark run and select a certain $N$ and $dt$ in that run or let it look through all $N$ and $dt$. After that, enter a restraint on any of the conservation error:
 - Maximum $L^2$ error among all time steps.
-- Maximum norm drift (deviation from norm at $t = 0$, or 1) among all time steps
+- Maximum norm drift (deviation from norm at $t = 0$) among all time steps
 - Maximum energy drift (deviation from energy at $t = 0$) among all time steps\
 And the program will find the fastest solver satisfying your restraint and specified configuration.
 
