@@ -86,7 +86,7 @@ def ReferenceDiagnostics(grid, numerical, reference):
 
 def CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time):
     if analytical is None:
-        return ("N/A") * 6 #When there is no analytical implemented
+        return ("N/A",) * 6 #When there is no analytical implemented, btw that comma is important
 
     reference = analytical(time)
 
@@ -137,7 +137,7 @@ def RunSolvers_AndWriteToFile(N, dt, T_final, grid, mass, hbar,
 
                 reference_errors = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
-                cn_L2, ssf_L2 = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
+                reference_errors = CalculateReferenceErrors(grid, wave_cn, wave_ssf, analytical, time)
 
                 writer.writerow([step, time, 
                                 wave_cn.Norm(), wave_cn.Expectation_x(), wave_cn.Expectation_p(hbar = hbar), CN_solver.Expectation_energy(wave_cn),
