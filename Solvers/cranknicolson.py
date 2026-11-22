@@ -47,6 +47,7 @@ class CrankNicolsonSolver:
                        off_diagonal * np.ones(N - 1)], 
                       offsets=[-1, 0, 1], format='csc') 
 
+        self.H = H 
         I = identity(N, dtype = complex, format='csc')
 
         factor = 1j * self.dt / (2 * self.hbar)
@@ -76,3 +77,27 @@ class CrankNicolsonSolver:
             new_psi[1:-1] = psi_new_inside  # Exclude boundary points]
 
         wave.psi = new_psi
+
+
+    #A method that calculates the energy using CN built Hamiltonian
+    #E = (psi* H psi) / (psi* psi)
+    def Expectation_energy(self, wave):
+        psi = np.asarray(wave.psi, dtype = complex)
+
+        if psi.shape != self.grid.x.shape:
+            raise ValueError("Wave and solver grid dimensions do not match.")
+
+        #The Dirichlet Hamiltonian contains only interior points
+        inside = psi if self.periodic else psi[1:-1]
+
+        probability = float(np.vdot(inside, inside).real)
+        if not np.isfinite(probability) or probability <= 0:
+            raise ValueError("Cannot calculate energy for a zero or nonfinite wave.")
+
+        H_psi = self.H @ inside
+        energy = float(np.vdot(inside, H_psi).real / probability)
+
+        if not np.isfinite(energy):
+            raise ValueError("Calculated energy is not finite.")
+
+        return energy

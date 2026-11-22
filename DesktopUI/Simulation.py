@@ -303,7 +303,10 @@ def RunSimulation(config, stop_event = None):
         else:
             #These expectation values functions in wave_function use FFT
             momentum = wave.Expectation_p(hbar = config.hbar)
-            energy = wave.Expectation_energy(potential, mass = config.mass, hbar = config.hbar)
+            if config.solver == "Crank-Nicolson":
+                energy = solver.Expectation_energy(wave)
+            else:
+                energy = wave.Expectation_energy(potential, mass = config.mass, hbar = config.hbar)
         rows.append((time, wave.Norm(), wave.Expectation_x(), momentum, energy))
 
         if step in frame_lookup:
