@@ -131,9 +131,11 @@ def _EvaluateNode(node, x):
 
         if node.keywords:raise ValueError("Keyword arguments are not allowed")
 
-        arguments = [_EvaluateNode(arg, x) for arg in node.args]
+        if len(node.args) != 1:
+            raise ValueError(f"Function '{function_name}' requires exactly one argument.")
 
-        return ALLOWED_FUNCTIONS[function_name](*arguments)
+        argument = _EvaluateNode(node.args[0], x)
+        return ALLOWED_FUNCTIONS[function_name](argument)
 
 
     raise ValueError("Unrecognized syntax(es) in expression")

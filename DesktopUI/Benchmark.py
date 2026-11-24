@@ -15,7 +15,8 @@ from Simulation import BuildGrid, BuildWaveFunction, BuildPotential, INFINITE_WE
 from ComparingMethods.AnalyticalSolutions import (FreeGaussianAnalytical,   #All functions to calculate numerical waves
                                             PlaneWaveAnalytical,
                                             HarmonicOscillatorEigenstateAnalytical,
-                                            GaussianHarmonicAnalytical)
+                                            GaussianHarmonicAnalytical,
+                                            FreeGaussianAnalytical_Periodic)
 from Simulation import SimulationConfig
 from ComparingMethods.CompareMethods import RunComparison
 
@@ -116,15 +117,10 @@ def BuildBenchmarkProblem(config):
         )
 
     elif problem == ("Gaussian Packet", "Free Particle"):
-        raw_reference = partial(
-            FreeGaussianAnalytical,
-            grid=grid,
-            x0=parameters["x0"],
-            sigma=parameters["sigma"],
-            k0=parameters["k0"],
-            mass=config.mass,
-            hbar=config.hbar,
-        )
+        raw_reference = FreeGaussianAnalytical_Periodic(grid,
+                        wave,
+                        mass=config.mass,
+                        hbar=config.hbar)
 
     elif config.wave_type == "Harmonic Oscillator Eigenstate":
         raw_reference = partial(

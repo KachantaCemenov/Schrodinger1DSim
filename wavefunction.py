@@ -1,6 +1,5 @@
 import numpy as np
-from scipy.special import eval_hermite
-from math import factorial
+
 
 
 class WaveFunction:
@@ -189,20 +188,35 @@ class WaveFunction:
     """ 
     @classmethod
     def HarmonicOscillatorEigenstate(cls, grid, n: int, mass=1.0, omega=1.0, hbar=1.0, center=0.0):
+
+        if not isinstance(n, (int, np.integer)) or n < 0:
+            raise ValueError("n must be a nonnegative integer.")
+
+        if not np.all(np.isfinite([mass, omega, hbar, center])) or min(mass, omega, hbar) <= 0:
+            raise ValueError("Use finite parameters and positive mass, omega, and hbar.")
+
         x = grid.x
 
         #bunch of constants
-        #const = np.sqrt(mass * omega / (hbar * 2)) * (x - center)
         const = np.sqrt(mass * omega / hbar) * (x - center)
 
-        #normalization term
-        normalization = (mass * omega / (hbar * np.pi))**(1/4) * (1 / np.sqrt(2**n * factorial(n)))
-        
-        psi = normalization * eval_hermite(n, const) * np.exp(-mass * omega * (x - center)**2 / (2 * hbar))
+        psi = np.exp(-0.5 * const**2)
+
+        if n > 0:
+            previous = psi
+            psi = np.sqrt(2.0) * const * previous
+
+            for order in range(1, n):
+                following = (np.sqrt(2.0 / (order + 1)) * const * psi - np.sqrt(order / (order + 1)) * previous)
+                previous, psi = psi, following
 
         wave = cls(grid, psi)
-        wave.Normalize()
 
+        norm = wave.Norm()
+        if not np.isfinite(norm) or norm <= 0:
+            raise ValueError("Cannot represent this eigenstate on the selected grid.")
+
+        wave.Normalize()
         wave.name = "HarmonicOscillatorEigenstate"
 
         return wave

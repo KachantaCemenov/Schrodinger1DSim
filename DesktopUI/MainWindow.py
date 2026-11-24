@@ -1527,7 +1527,7 @@ class MainWindow(tk.Tk):
                 if self.benchmark_saved_folder is not None and Path(self.benchmark_saved_folder).resolve() == folder.resolve():
                     self.benchmark_saved_folder = None
                     self.benchmark_saved_manifest = None
-                    self.benchmark_results_view.LoadRun(folder, {"results": []})
+                    self.benchmark_results_view.LoadRun(folder, {"configuration": {"problems": {}}, "results": []})
                     self.read_benchmark_path.set("No run loaded.")
                     self.resume_benchmark_button.configure(state="disabled")
                     self.open_benchmark_folder_button.configure(state="disabled")

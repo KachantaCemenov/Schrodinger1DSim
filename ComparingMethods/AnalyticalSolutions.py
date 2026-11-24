@@ -23,6 +23,22 @@ def FreeGaussianAnalytical(grid, t, x0, sigma, k0, mass=1.0, hbar=1.0):
 
     return psi
 
+
+def FreeGaussianAnalytical_Periodic(grid, initial_wave, mass=1.0, hbar=1.0):
+    if not grid.periodic:
+        raise ValueError("This free-particle reference requires periodic boundaries.")
+
+    initial_spectrum = np.fft.fft(initial_wave.psi)
+
+    k = 2 * np.pi * np.fft.fftfreq(len(grid.x), d=grid.dx)
+    frequency = hbar * k**2 / (2 * mass)
+
+    def reference(t):
+        return np.fft.ifft(initial_spectrum * np.exp(-1j * frequency * t))
+
+    return reference
+
+
 """
 E_n = h_bar * omega * (n + 1/2)
 psi_n(x,t) = psi_n(x,0) * exp(-i * E_n * t / h_bar)

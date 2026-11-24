@@ -8,7 +8,7 @@ from grid import Grid1D
 from wavefunction import WaveFunction
 from potential import Potential
 from AnalyticalSolutions import (FreeGaussianAnalytical, HarmonicOscillatorEigenstateAnalytical, 
-                                 PlaneWaveAnalytical, GaussianHarmonicAnalytical)
+                                 PlaneWaveAnalytical, GaussianHarmonicAnalytical, FreeGaussianAnalytical_Periodic)
 
 
 HBAR = hbar
@@ -167,8 +167,7 @@ def PlaneWaveFree(grid):
     wave = WaveFunction.PlaneWave(grid=grid, n=n)
     potential = Potential.FreeParticle(grid)
 
-    def analytical(t):
-        return PlaneWaveAnalytical(initial_wave=wave, grid=grid, t=t, n=n,mass=mass, hbar=hbar)
+    analytical = FreeGaussianAnalytical_Periodic(grid, wave, mass=mass, hbar=hbar)
 
     return wave, potential, analytical
 
@@ -206,7 +205,7 @@ benchmarks = [
         "T_final": 100e-15
     }
 ]
-if __name__ == "main":
+if __name__ == "__main__":
     #Run the benchmarks for each N and dt
     for benchmark in benchmarks:
 
