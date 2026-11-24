@@ -60,12 +60,6 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size = 50_000, *
     T = float(config["T_final"])
     expected_steps = CountTimeSteps(T, dt)
 
-    if not math.isfinite(ratio) or ratio < 1:
-        raise ValueError("Invalid final time or dt in the saved configuration.")
-    expected_steps = round(ratio)
-    if not math.isclose(ratio, expected_steps, rel_tol=0, abs_tol=1e-10):
-        raise ValueError("Saved T_final is not a whole number of time steps.")
-
     #Get the fields out
     columns = ["step", "time"]
     for method in ("CN", "SSF"):
