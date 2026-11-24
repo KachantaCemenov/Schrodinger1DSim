@@ -10,7 +10,7 @@ APP_DATA_DIR = Path(os.environ["LOCALAPPDATA"]) / "Schrodinger1DSim"
 CONFIG_FILE = APP_DATA_DIR / "configurations.json"
 BENCHMARK_CONFIG_FILE = CONFIG_FILE.with_name("benchmark_configurations.json")
 
-DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent / "DefaultConfigurations"
+DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent / "DefaultConfig"
 
 #Copy configs from DEFAULT_CONFIG_DIR to destination in (CONFIG_FILE, BENCHMARK_CONFIG_FILE)
 def InstallDefaultConfigurations():
