@@ -63,29 +63,12 @@
   <ItemGroup>
     <Folder Include="ComparingMethods\" />
     <Folder Include="ComparingMethods\Results\" />
-    <Folder Include="ComparingMethods\Results\Comparisons\" />
-    <Folder Include="ComparingMethods\Results\CSV\" />
     <Folder Include="DesktopUI\" />
     <Folder Include="docs\" />
     <Folder Include="docs\solvers\" />
     <Folder Include="Solvers\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-22 21-24-40.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-22 21-32-50.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-22 21-36-37.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-23 09-42-29.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-23 11-35-49.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-23 11-47-33.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_2026-09-27 09-54-58.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 03, 2026_SSF.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 05, 2026_CN.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 05, 2026_SSF.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 06, 2026_CN.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 07, 2026_CN.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 07, 2026_SSF.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_October 19, 2026_SSF.csv" />
-    <Content Include="ComparingMethods\Results\CSV\wavefunction_data_September 22, 2026.csv" />
     <Content Include="DesktopUI\TooltipHelpText.py" />
     <Content Include="docs\benchmarking.md" />
     <Content Include="docs\index.md" />

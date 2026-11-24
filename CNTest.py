@@ -7,6 +7,7 @@ from Solvers.cranknicolson import CrankNicolsonSolver
 from datetime import datetime
 from matplotlib.animation import FuncAnimation
 import csv
+from pathlib import Path
 
 #Initialize 1D grid
 grid = Grid1D(
@@ -67,9 +68,13 @@ fd = date.strftime("%B %d, %Y")
 print(fd)
 print("CN")
 
-with open(f'Results/CSV/wavefunction_data_{fd}_CN.csv', mode='w', newline='') as file:
+output_folder = Path(__file__).resolve().parent / "Results" / "CSV"
+output_folder.mkdir(parents=True, exist_ok=True)
+output_path = output_folder / f"wavefunction_data_{fd}_CN.csv"
+
+with output_path.open(mode="w", newline="") as file:
     writer = csv.writer(file)
-    writer.writerow(["time", "step", "norm", "expected_x", "expected_p"])
+    writer.writerow(["step", "time", "norm", "expected_x", "expected_p"])
 
     #Write in initial state because loop only return results after propagation
     writer.writerow([
@@ -82,11 +87,12 @@ with open(f'Results/CSV/wavefunction_data_{fd}_CN.csv', mode='w', newline='') as
 
     for i in range(50000):
         solver.Step(wave)
+        step = i + 1
 
-        time = i * solver.dt
+        time = step * solver.dt
 
         writer.writerow([
-            i,
+            step,
             time,
             wave.Norm(),
             wave.Expectation_x(),
@@ -94,14 +100,14 @@ with open(f'Results/CSV/wavefunction_data_{fd}_CN.csv', mode='w', newline='') as
         ])
 
         # Only save every 20th timestep for the visualization
-        if i % 20 == 0:
+        if step % 20 == 0:
             frames.append({
                 "probability": wave.ProbabilityDensity().copy(),
                 "norm": wave.Norm(),
                 "expected_x": wave.Expectation_x(),
                 "expected_p": wave.Expectation_p(),
                 "time": time,
-                "step": i
+                "step": step
             })
 
 

@@ -489,7 +489,7 @@ def PlotAllGraphs(run_folder: Path):
 
     for problem_folder in run_folder.iterdir():
         #Ignor Graphs folder
-        if problem_folder.name == "Graphs":
+        if not problem_folder.is_dir() or problem_folder.name == "Graphs":
             continue
 
         print(f"\nPlotting: {problem_folder.name}")
@@ -499,7 +499,8 @@ def PlotAllGraphs(run_folder: Path):
 
         #Find all N/dt combinations
         for setting_folder in problem_folder.iterdir():
-
+            if not setting_folder.is_dir():
+                continue
             match = re.fullmatch(r"N(\d+)_dt([0-9.eE+-]+)", setting_folder.name)
             if match is None:
                 continue

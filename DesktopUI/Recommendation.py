@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from BenchmarkResults import ReadBenchmarkManifest
+from TimeSteps import CountTimeSteps
 
 SUMMARY_COLUMNS = ["problem",
                     "N",
@@ -57,7 +58,7 @@ def SummarizeBenchmarkCombination(folder, record, config, chunk_size = 50_000, *
 
     dt = float(record["dt"])
     T = float(config["T_final"])
-    ratio = T / dt
+    expected_steps = CountTimeSteps(T, dt)
 
     if not math.isfinite(ratio) or ratio < 1:
         raise ValueError("Invalid final time or dt in the saved configuration.")

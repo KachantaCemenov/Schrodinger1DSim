@@ -30,6 +30,7 @@ from TooltipHelpText import (NUMERICAL_HELP, WAVE_HELP, POTENTIAL_HELP, SIMULATI
                              BENCHMARK_HELP, READ_BENCHMARK_HELP, CONSTANT_HELP)
 from HelpWindow import HelpWindow
 from ScrollableFrame import ScrollableFrame
+from TimeSteps import CountTimeSteps
 
 
 class MainWindow(tk.Tk):
@@ -1010,17 +1011,7 @@ class MainWindow(tk.Tk):
 
     #Check T and dt are valid
     def BenchmarkStepCheck(self, T, dt):
-        if not math.isfinite(T) or T <= 0:
-            raise ValueError("T_final must be finite and positive.")
-        ratio = T / dt
-        if not math.isfinite(ratio) or ratio > MAX_STEPS:
-            #:g is useful, it drop trailing zeroes
-            raise ValueError(f"dt = {dt:g} exceeds the limit of {MAX_STEPS} steps.\nPlease reduce T_final or increase dt.") 
-        
-        steps = round(ratio)
-        if steps < 1 or abs(ratio - steps) > 1e-10:
-            raise ValueError(f"T_final must be whole number of steps for dt = {dt:g}.")
-        return steps
+        return CountTimeSteps(T, dt, max_steps = MAX_STEPS) #The check was outsourced to this script
 
     def BuildBenchmarkConfig(self):
 

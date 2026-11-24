@@ -23,15 +23,15 @@ def RecommendMethod(summary, problem, N = None, dt = None,
     """
     valid = summary[summary["problem"] == problem].copy()
     
-    if N: 
+    if N is not None:
         valid = valid[valid["N"] == N]
-    if dt:
+    if dt is not None:
         valid = valid[np.isclose(valid["dt"], dt, rtol = 1e-10, atol = 0)]
-    if l2_tolerance:
+    if l2_tolerance is not None:
         valid = valid[valid["max_L2_error"] <= l2_tolerance]
-    if norm_tolerance:
+    if norm_tolerance is not None:
         valid = valid[valid["max_norm_error"] <= norm_tolerance]
-    if energy_tolerance:
+    if energy_tolerance is not None:
         valid = valid[valid["max_energy_error"] <= energy_tolerance]
     if valid.empty:
         return None

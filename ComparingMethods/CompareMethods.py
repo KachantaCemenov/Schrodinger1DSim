@@ -1,14 +1,15 @@
-from Solvers.cranknicolson import CrankNicolsonSolver
-from Solvers.SSFSolver import SplitStepFourierSolver
-from grid import Grid1D
-from wavefunction import WaveFunction
-from potential import Potential
-
 import csv
 from pathlib import Path
 from datetime import datetime
 from time import perf_counter
 import numpy as np
+
+from Solvers.cranknicolson import CrankNicolsonSolver
+from Solvers.SSFSolver import SplitStepFourierSolver
+from grid import Grid1D
+from wavefunction import WaveFunction
+from potential import Potential
+from TimeSteps import CountTimeSteps
 
 
 """
@@ -26,7 +27,7 @@ def RunComparison(setting_folder : Path,
                   mass: float = 1.0, hbar: float = 1.0, *, steps: int | None = None #BenchmarkTab will pass the steps
                   ):
     if steps is None:
-        steps = int(T_final / dt)
+        steps = CountTimeSteps(T_final, dt)
 
     #Initialize solvers
     CN_solver = CrankNicolsonSolver(grid=grid, potential=potential, dt=dt, mass=mass, hbar=hbar)

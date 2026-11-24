@@ -17,8 +17,9 @@ from ComparingMethods.AnalyticalSolutions import (FreeGaussianAnalytical,   #All
                                             HarmonicOscillatorEigenstateAnalytical,
                                             GaussianHarmonicAnalytical,
                                             FreeGaussianAnalytical_Periodic)
-from Simulation import SimulationConfig
+from Simulation import SimulationConfig, MAX_STEPS
 from ComparingMethods.CompareMethods import RunComparison
+from TimeSteps import CountTimeSteps
 
 #Check if the problem has an analytical reference
 def HasBenchmarkReference(config):
@@ -250,7 +251,7 @@ def RunBenchmarkConfiguration(run, output_folder, progress,
                         analytical = analytical,
                         mass = config.mass,
                         hbar = config.hbar,
-                        steps = round(config.T_final / dt)
+                        steps = CountTimeSteps(config.T_final, dt, max_steps = MAX_STEPS)
                         )
 
                     results.append({

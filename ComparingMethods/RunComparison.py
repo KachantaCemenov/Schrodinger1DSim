@@ -2,6 +2,11 @@ from pathlib import Path
 from datetime import datetime
 from scipy.constants import hbar, m_e, e
 import numpy as np
+from pathlib import Path
+import sys
+
+project_folder = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_folder)) #add project to sys.path to prevent ModuleNotFoundError
 
 from CompareMethods import RunComparison
 from grid import Grid1D
@@ -50,14 +55,6 @@ dt_values = [
 ]
 
 
-timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-comparing_folder = Path(__file__).resolve().parent
-
-run_folder = (comparing_folder/"Results"/f"run_{timestamp}")
-
-run_folder.mkdir(parents=True,exist_ok=True)
-
 
 #Each of these is a benchmark problem
 def GaussianFree(grid): #grid differs on each N
@@ -83,14 +80,17 @@ def GaussianFree(grid): #grid differs on each N
     potential = Potential.FreeParticle(grid) 
 
     #python closure to pass this function to CompareMethods
+    """
     def analytical(t):
         return FreeGaussianAnalytical(grid=grid, t=t, x0=x0, sigma=sigma,
                                       k0=k0,mass=mass,hbar=hbar)
+    """
+    analytical = FreeGaussianAnalytical_Periodic(grid, wave, mass = mass, hbar = hbar)
 
     return wave, potential, analytical
 
 #With Barrier as potential there is no analytical solution. Maybe do a high resolution numerical reference for this (SSF with extremely small N and dt?)
-#NOT WORKING, NO ANALYTICAL FUNCTION
+#WORKED, BUT NO ANALYTICAL FUNCTION
 def GaussianBarrier(grid):
     mass = ELECTRON_MASS
     hbar = HBAR
@@ -115,7 +115,7 @@ def GaussianBarrier(grid):
         return FreeGaussianAnalytical(grid=grid, t=t, x0=x0, sigma=sigma,
                                       k0=k0,mass=mass,hbar=hbar)
     """
-    return wave, potential, analytical
+    return wave, potential, None
 
 def GaussianHarmonic(grid):
     
@@ -206,6 +206,15 @@ benchmarks = [
     }
 ]
 if __name__ == "__main__":
+
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    comparing_folder = Path(__file__).resolve().parent
+
+    run_folder = (comparing_folder/"Results"/f"run_{timestamp}")
+
+    run_folder.mkdir(parents=True,exist_ok=True)
+
     #Run the benchmarks for each N and dt
     for benchmark in benchmarks:
 

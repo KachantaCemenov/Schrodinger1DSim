@@ -12,6 +12,7 @@ from wavefunction import WaveFunction
 from WaveFuncParser import ParseWaveFunction
 from Solvers.cranknicolson import CrankNicolsonSolver
 from Solvers.SSFSolver import SplitStepFourierSolver
+from TimeSteps import CountTimeSteps
 
 BOUNDARY_CONDITIONS = ("Periodic", "Dirichlet")
 @dataclass
@@ -181,14 +182,7 @@ def RunSimulation(config, stop_event = None):
     if min(config.mass, config.hbar, config.dt, config.T_final) <= 0:
         raise ValueError("Mass, reduced Planck constant, time step, and final time must be positive.")
 
-    ratio = config.T_final / config.dt
-
-    if not np.isfinite(ratio) or ratio > MAX_STEPS:
-        raise ValueError(f"This run exceed the limit of {MAX_STEPS} time steps.\nPlease reduce T_final or increase dt.")
-
-    num_steps = round(ratio)
-    if num_steps <= 0 or abs(ratio - num_steps) > 1e-10:
-        raise ValueError("Final time must be an integer multiple of the time step.")
+    num_steps = CountTimeSteps(config.T_final, config.dt, max_steps = MAX_STEPS)
     
     """
     grid = BuildGrid(config)
